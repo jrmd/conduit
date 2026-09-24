@@ -100,3 +100,7 @@ GitHub release `v0.3.0` published successfully with Linux AppImage, Windows NSIS
 Integrated the user-supplied @jrmd OpenShaders field/halftone shader with its original constants and dark-theme math. Vulp supplies its page background colour and caps decorative animation at 30 fps. The canvas is scoped to the new-thread state and releases programs, textures, framebuffer, observers, and animation callbacks on unmount. Reduced motion renders a still frame; hidden/offscreen rendering pauses; context loss falls back to the plain background.
 
 Typecheck/build and Electron replay smoke passed. The smoke verifies a linked WebGL2 program without GL errors, stable time under reduced motion, time advancing again after reduced motion is disabled, fallback after forced context loss, and removal of the canvas once a prompt is sent. Screenshots inspected at 1440x900 and 850x600.
+
+## Inline composer controls (0.3.2)
+
+Moved model, effort, and permission controls into the composer below the textarea, vertically aligned with Send/Stop. Attachment action and preview chips remain above the composer. Typecheck and Electron replay smoke passed, including a geometry assertion for controls below the input and sharing the send-button centreline. Screenshots inspected at desktop and compact sizes; popovers, focus return, attachments, cancellation, and permission changes remain covered.
