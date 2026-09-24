@@ -13,6 +13,8 @@ precision highp float;
 uniform vec2 iResolution;
 uniform float iTime;
 uniform vec3 uDarkBackground;
+uniform vec3 uLightBackground;
+uniform float uLightMode;
 out vec4 fragColor;
 const float HUE = 0.905928731;
 const float HUE_SPREAD = -0.330840468;
@@ -96,7 +98,10 @@ void main() {
  color = pow(clamp(color, 0.0, 1.0), vec3(0.85, 0.92, 0.98));
  float edge = smoothstep(0.5, 1.6, length(pos));
  color *= 1.0 - edge * VIGNETTE;
- color = uDarkBackground + color * (1.0 - uDarkBackground);
+ vec3 dark = uDarkBackground + color * (1.0 - uDarkBackground);
+ float strength = max(color.r, max(color.g, color.b));
+ vec3 light = uLightBackground * (1.0 - strength) + color * 0.96;
+ color = mix(dark, light, uLightMode);
  color += (blueNoise(gl_FragCoord.xy, floor(iTime * 24.0)) - 0.5) / 255.0;
  fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;
@@ -106,13 +111,15 @@ uniform sampler2D tScene;
 uniform vec2 iResolution;
 uniform float iTime;
 uniform vec3 uDarkBackground;
+uniform vec3 uLightBackground;
+uniform float uLightMode;
 uniform float uPixelRatio;
 out vec4 fragColor;
 const float uStrength = 0.94645685;
 const float uScale = 1.0494405;
 const float uSeed = 0.724083722;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
-vec3 sceneInk(vec2 uv) { return texture(tScene, clamp(uv, 0.0, 1.0)).rgb - uDarkBackground; }
+vec3 sceneInk(vec2 uv) { vec3 c = texture(tScene, clamp(uv, 0.0, 1.0)).rgb; return mix(c - uDarkBackground, uLightBackground - c, uLightMode); }
 float blueNoise(vec2 p, float frame) {
  p += 5.588238 * mod(frame, 64.0);
  return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
@@ -139,17 +146,18 @@ vec3 halftone(vec2 frag) {
 void main() {
  vec2 frag = gl_FragCoord.xy;
  vec3 ink = halftone(frag);
- vec3 color = uDarkBackground + clamp(ink, 0.0, 1.0);
+ vec3 color = mix(uDarkBackground + clamp(ink, 0.0, 1.0), uLightBackground - clamp(ink, 0.0, 1.0), uLightMode);
  color += (blueNoise(frag, floor(iTime * 24.0)) - 0.5) / 255.0;
  fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;
 
-export function JrmdShader() {
+export function JrmdShader({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
  const canvas = useRef<HTMLCanvasElement>(null);
  const [failed,setFailed] = useState(false);
  useEffect(()=>{
   const element=canvas.current;
   if(!element)return;
+  setFailed(false);
   const gl=element.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false});
   if(!gl){setFailed(true);return;}
   let disposed=false,frame=0,visible=true,elapsed=0,previous=0,lastDraw=0;
@@ -166,7 +174,7 @@ export function JrmdShader() {
     gl!.attachShader(program,shader);
    }
    gl!.linkProgram(program);if(!gl!.getProgramParameter(program,gl!.LINK_STATUS))throw new Error('Shader link failed');
-   return {program,uniforms:Object.fromEntries(['iResolution','iTime','uDarkBackground','uPixelRatio','tScene'].map(name=>[name,gl!.getUniformLocation(program,name)]))};
+   return {program,uniforms:Object.fromEntries(['iResolution','iTime','uDarkBackground','uLightBackground','uLightMode','uPixelRatio','tScene'].map(name=>[name,gl!.getUniformLocation(program,name)]))};
   }
   let draw:(time:number)=>void;
   try{
@@ -191,7 +199,7 @@ export function JrmdShader() {
     }
     for(const pass of [field,post]){
      gl.bindFramebuffer(gl.FRAMEBUFFER,pass===field?framebuffer:null);gl.useProgram(pass.program);
-     gl.uniform2f(pass.uniforms.iResolution,w,h);gl.uniform1f(pass.uniforms.iTime,time);gl.uniform3f(pass.uniforms.uDarkBackground,7/255,12/255,21/255);
+     gl.uniform2f(pass.uniforms.iResolution,w,h);gl.uniform1f(pass.uniforms.iTime,time);gl.uniform3f(pass.uniforms.uDarkBackground,7/255,12/255,21/255);gl.uniform3f(pass.uniforms.uLightBackground,248/255,249/255,251/255);gl.uniform1f(pass.uniforms.uLightMode,theme === 'light' ? 1 : 0);
      if(pass===post){gl.uniform1f(pass.uniforms.uPixelRatio,w/width);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,scene);gl.uniform1i(pass.uniforms.tScene,0);}
      gl.drawArrays(gl.TRIANGLES,0,3);
     }
@@ -211,6 +219,6 @@ export function JrmdShader() {
   const lost=(event:Event)=>{event.preventDefault();disposed=true;cancelAnimationFrame(frame);setFailed(true)};
   resize.observe(element);intersection.observe(element);motion.addEventListener('change',refresh);document.addEventListener('visibilitychange',refresh);window.addEventListener('resize',refresh);element.addEventListener('webglcontextlost',lost);refresh();
   return()=>{disposed=true;cancelAnimationFrame(frame);resize.disconnect();intersection.disconnect();motion.removeEventListener('change',refresh);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('resize',refresh);element.removeEventListener('webglcontextlost',lost);release();};
- },[]);
+ },[theme]);
  return <canvas ref={canvas} className={`new-thread-shader${failed?' shader-fallback':''}`} aria-hidden="true"/>;
 }

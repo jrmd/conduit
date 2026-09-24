@@ -1,3 +1,4 @@
+import { nativeTheme } from 'electron';
 import { app, BrowserWindow, Menu, clipboard, nativeImage, dialog, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -105,6 +106,11 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
 }
 
 function registerIpc() {
+  handle('appearance', (theme: unknown) => {
+    if (theme !== 'system' && theme !== 'light' && theme !== 'dark') throw new Error('Invalid appearance');
+    nativeTheme.themeSource = theme;
+    win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#070c15' : '#f8f9fb');
+  });
   handle('app-info', () => ({ version: app.getVersion(), platform: process.platform }));
   handle('update-status', () => updates.getStatus());
   handle('update-check', () => updates.check());

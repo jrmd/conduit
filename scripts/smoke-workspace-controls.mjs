@@ -112,6 +112,7 @@ await expect(page.getByText('One chat. Any model.',{exact:true})).toHaveCount(0)
  await page.getByRole('button',{name:'Copy response',exact:true}).click();expect(await app.evaluate(({clipboard})=>clipboard.readText())).toBe(reply);
  await page.getByRole('button',{name:'Copy code',exact:true}).click();expect(await app.evaluate(({clipboard})=>clipboard.readText())).toBe('const result = 19 * 23;\nconsole.log(result);');
  await page.setViewportSize({width:1440,height:900});await page.screenshot({path:path.join(root,'artifacts','vulp-rich-response.png')});
+ await page.getByRole('button',{name:'Agent settings',exact:true}).click();await page.getByRole('button',{name:'Light',exact:true}).click();await page.getByRole('button',{name:'Back to chat',exact:true}).click();await page.screenshot({path:path.join(root,'artifacts','vulp-rich-response-light.png')});
  await page.getByRole('button',{name:'Read only',exact:false}).click();await expect(page.getByRole('button',{name:'Edit files',exact:false})).toBeEnabled();expect((await page.evaluate(()=>window.j2code.getSnapshot())).threads[0].mode).toBe('edit');await page.getByRole('button',{name:'Edit files',exact:false}).click();
  await page.locator('.activity-toggle').click();await expect(page.getByText('Thinking',{exact:true})).toBeVisible();
  await page.locator('.activity-item').filter({has:page.getByText('node arithmetic-check',{exact:true})}).locator('summary').click();await expect(page.getByText('437',{exact:true})).toBeVisible();

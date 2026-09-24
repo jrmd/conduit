@@ -576,3 +576,19 @@ body{background:#070c15;color:#dce5f3}
 .platform-darwin button,.platform-darwin input,.platform-darwin [role=dialog]{-webkit-app-region:no-drag;app-region:no-drag}
 @media(max-width:1000px){.sidebar{width:218px;min-width:218px}.settings-content{padding:32px 26px}.composer .composer-bottom{gap:7px}.composer-bottom .model-select{max-width:175px}}
 @media(max-width:850px){.composer-bottom .model-select{max-width:160px}.composer .composer-bottom{gap:5px}.settings-content .agent-state{display:none}}
+
+/* Shared icon/label geometry, including action buttons outside the composer. */
+button>svg,summary>svg{display:block;flex-shrink:0;vertical-align:middle}
+.primary-button,.ghost-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;line-height:1.2}
+button.icon-button{line-height:1}
+.composer .composer-bottom :is(.model-select,.effort-select,.mode-select,.attach-button){height:30px;align-items:center;line-height:1.2}
+.model-select>svg:first-child,.model-provider-tab>svg{width:16px;height:16px}
+.welcome-state:before{display:none}
+.welcome-state:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(180deg,#070c1566,transparent 30%,#070c1533 65%,#070c15)}
+.welcome-state h1{background:none;color:#dce7f6;font-size:26px}
+.welcome-state .primary-button{margin-top:24px;min-height:36px;padding:0 14px}
+.appearance-settings{margin:28px 0 30px}
+.appearance-options{display:flex;gap:8px;margin:16px 0}
+.appearance-options button{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100px;min-height:36px;border:1px solid #303946;border-radius:6px;background:#171e28;color:#a7b2c2;font-size:12px}
+.appearance-options button[aria-pressed=true]{border-color:#5a99af;color:#e0f4f7;background:#1d3540}
+.appearance-options button:hover{border-color:#76899f}

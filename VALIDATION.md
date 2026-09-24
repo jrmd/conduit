@@ -112,3 +112,11 @@ Moved model, effort, and permission controls into the composer below the textare
 - `J2CODE_SMOKE_PACKAGED=1 node scripts/smoke-workspace-controls.mjs`: checks the packaged Linux renderer, installed version, dedicated Settings screen, draft preservation, provider switches, 850px settings scrolling, lower-row paperclip and upper attachment previews, model/send alignment, rich Markdown, code/response clipboard contents, separate Codex message boundaries, tool/subagent activity, permission switching and cancellation.
 - Inspected screenshots at 1440×900 and 850×600. A simulated macOS CSS class verifies header drag/no-drag regions and 94px logo clearance. This is not native macOS window verification.
 - T3 source findings and remaining architectural differences are recorded in `docs/t3-response-notes.md`. No fresh authenticated Claude/OpenCode/Cursor run was performed for these changes.
+
+## Vulp 0.3.4 — appearance and button alignment
+
+- Added shared flex alignment for primary/secondary icon-label buttons and consistent lower-composer control height. DOM geometry checks compare the actual text and SVG centerlines for Open folder, Back to chat and Refresh discovery.
+- Open a project and New thread both mount the supplied WebGL2 halftone shader, including theme-aware color passes, reduced motion and fallback behavior. This does not convert the shader to WebGPU.
+- Appearance settings offer System (default), Light and Dark, saved locally across restart. System observes live OS changes. Native Electron menus/window background follow the selected appearance.
+- `pnpm typecheck`, Linux packaging and both packaged smoke scripts pass. `scripts/smoke-appearance.mjs` covers system changes, explicit overrides, stored preference after restart, shader uniform values in both themes and empty-project to new-project navigation. `scripts/smoke-workspace-controls.mjs` also captures light-mode rich responses and expanded activity.
+- Inspected screenshots at 1440×900 and 850×600; native Mac/Windows appearance remains unverified on this Linux host.
