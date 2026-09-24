@@ -1,3 +1,4 @@
+import { createClaudeTextStream } from './response-stream';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -373,15 +374,23 @@ export async function runProvider(input: RunProviderArgs): Promise<{ sessionId?:
   let stderrTail = '';
   let authFailure: string | undefined;
   let providerFailure: string | undefined;
-  const seenAssistantText = new Set<string>();
-  let claudeStreamedText = '';
+  const claudeText = createClaudeTextStream();
+  let hasCodexText = false;
   const activityParser = createActivityParser(input.provider);
   const emitLine = (line: string) => {
     for (const activity of activityParser(line)) input.onEvent({ kind: 'activity', text: activity.title, activity });
     const events = parseProviderOutputLine(input.provider, line);
-    let claudeDelta = false;
     if (input.provider === 'claude') {
-      try { claudeDelta = JSON.parse(line).type === 'stream_event'; } catch { /* ignore non-JSON diagnostics */ }
+      try {
+        const record = JSON.parse(line);
+        const text = claudeText(record);
+        if (record.type === 'assistant' || record.type === 'stream_event') {
+          const sessionId = events.find(e => e.sessionId)?.sessionId;
+          // Replace only response text; keep status, tools, and activity events.
+          for (let i = events.length - 1; i >= 0; i--) if (events[i].kind === 'text') events.splice(i, 1);
+          if (text) events.push(event('text', text, sessionId));
+        }
+      } catch { /* Plain CLI diagnostics are handled by the line parser. */ }
     }
     for (const e of events) {
       if (e.sessionId) {
@@ -389,11 +398,10 @@ export async function runProvider(input: RunProviderArgs): Promise<{ sessionId?:
         if (input.provider === 'codex' && !codexActivity) codexActivity = watchCodexActivity(e.sessionId, startedAt, activity => input.onEvent({ kind: 'activity', text: activity.title, activity }));
       }
       if (e.kind === 'error') authFailure = e.text;
-      if (input.provider === 'claude' && e.kind === 'text') {
-        if (claudeDelta) claudeStreamedText += e.text;
-        else if (claudeStreamedText.includes(e.text)) continue;
-        if (seenAssistantText.has(e.text)) continue;
-        seenAssistantText.add(e.text);
+      if (input.provider === 'codex' && e.kind === 'text') {
+        // Codex exec emits complete message items rather than token deltas.
+        if (hasCodexText) e.text = '\n\n' + e.text;
+        hasCodexText = true;
       }
       input.onEvent(e);
     }

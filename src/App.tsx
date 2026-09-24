@@ -12,11 +12,10 @@ import {
   MessageSquare, Plus, RefreshCw, Search, Settings2, Square, Terminal, Trash2, X,
 } from 'lucide-react';
 import { ActivityFeed } from './ActivityFeed';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MessageMarkdown } from './MessageMarkdown';
 import type { Attachment, UpdateStatus, ChangedFile, GitStatus, ModelCatalogue, Project, ProviderId, Snapshot } from '../shared/api';
 
-type Dialog = 'commit' | 'push' | 'pr' | 'delete' | 'removeProject' | 'settings' | null;
+type Dialog = 'commit' | 'push' | 'pr' | 'delete' | 'removeProject' | null;
 type Toast = { text: string; kind: 'success' | 'error' } | null;
 
 const providerNames: Record<ProviderId, string> = {
@@ -53,6 +52,9 @@ export default function App() {
   const [copiedId,setCopiedId] = useState<string|null>(null);
   const [updateStatus,setUpdateStatus] = useState<UpdateStatus>({state:'idle'});
   const [contextMenu, setContextMenu] = useState<{x:number;y:number;projectId:string;threadId?:string}|null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appInfo, setAppInfo] = useState({ version: '', platform: '' });
+  useEffect(() => { window.j2code.getAppInfo().then(setAppInfo).catch(console.error); }, []);
   const [loading, setLoading] = useState(true);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -238,20 +240,22 @@ export default function App() {
 
   useEffect(() => {
     function onShortcut(event: KeyboardEvent) {
+      if (event.key === 'Escape' && settingsOpen) { setSettingsOpen(false); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n' && activeProjectId) {
         event.preventDefault();
         setActiveThreadId(null);
+        setSettingsOpen(false);
         requestAnimationFrame(() => inputRef.current?.focus());
       }
     }
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, [activeProjectId]);
+  }, [activeProjectId, settingsOpen]);
 
   useEffect(() => {
     const input = inputRef.current;
     if (input) { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 200)}px`; }
-  }, [draft, activeProjectId, activeThreadId]);
+  }, [draft, activeProjectId, activeThreadId, settingsOpen]);
 
   useEffect(() => {
     function dismiss(event: PointerEvent) {
@@ -389,6 +393,7 @@ export default function App() {
   }
 
   function selectProject(project: Project) {
+    setSettingsOpen(false);
     activeProjectRef.current = project.id;
     setActiveProjectId(project.id);
     setSelectedFiles([]);
@@ -433,7 +438,7 @@ export default function App() {
   const changedCount = git.files.length;
   const canSend = (!!draft.trim() || !!draftAttachments.length) && !attaching && !!activeProject && !!providerInstalled && providerEnabled && !modelBusy && !sending && (activeThread ? !activeThread.running : true);
 
-  return <div className="app-shell">
+  return <div className={`app-shell platform-${appInfo.platform}`}>
     {contextMenu && <div className="workspace-context-menu" role="menu" aria-label="Workspace actions" style={{left:Math.min(contextMenu.x,window.innerWidth-210),top:Math.min(contextMenu.y,window.innerHeight-140)}}>
       <button autoFocus role="menuitem" onClick={() => { const project=snapshot.projects.find(p=>p.id===contextMenu.projectId);if(project){selectProject(project);setActiveThreadId(null);} }}><Plus size={14}/>New thread here</button>
       {contextMenu.threadId ? <button role="menuitem" onClick={() => {setActiveProjectId(contextMenu.projectId);setActiveThreadId(contextMenu.threadId!);setDialog('delete');}}><Trash2 size={14}/>Delete thread…</button> : <button role="menuitem" onClick={() => {setProjectToRemove(snapshot.projects.find(p=>p.id===contextMenu.projectId)!);setDialog('removeProject');}}><X size={14}/>Remove project…</button>}
@@ -444,7 +449,7 @@ export default function App() {
         <button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={17} /></button>
       </div>
       <div className="sidebar-content">
-        <button className="new-thread-button" disabled={!activeProject} onClick={() => { setActiveThreadId(null); requestAnimationFrame(() => inputRef.current?.focus()); }}><Plus size={16} />New thread<span>⌘ / Ctrl N</span></button>
+        <button className="new-thread-button" disabled={!activeProject} onClick={() => { setSettingsOpen(false); setActiveThreadId(null); requestAnimationFrame(() => inputRef.current?.focus()); }}><Plus size={16} />New thread<kbd>{appInfo.platform === 'darwin' ? '⌘ N' : 'Ctrl N'}</kbd></button>
         <div className="section-heading projects-heading"><span>Projects</span><button className="icon-button" onClick={pickProject} title="Open project folder" aria-label="Open project folder"><Plus size={16} /></button></div>
         <div className="project-tree">
           {snapshot.projects.map(project => {
@@ -458,7 +463,7 @@ export default function App() {
                 <button className="project-row-action remove" onClick={() => { setProjectToRemove(project); setDialog('removeProject'); }} title={`Remove ${project.name}`} aria-label={`Remove ${project.name}`}><X size={13} /></button>
               </div>
               {expanded && <div className="project-threads">
-                {threads.map(thread => <button key={thread.id} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-title">{thread.title || 'New thread'}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button>)}
+                {threads.map(thread => <button key={thread.id} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-title">{thread.title || 'New thread'}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button>)}
                 {threads.length === 0 && <div className="sidebar-empty">No threads yet</div>}
               </div>}
             </div>;
@@ -466,11 +471,16 @@ export default function App() {
           {snapshot.projects.length === 0 && <div className="sidebar-empty">Open a local folder to start.</div>}
         </div>
       </div>
-      <div className="sidebar-footer">{updateStatus.state==='ready' ? <button className="update-ready" onClick={()=>window.j2code.installUpdate().catch(error=>notify(String(error),'error'))}><Download size={13}/>Restart to update</button> : 'Local workspace'}<button className="icon-button footer-settings" title="Agent settings" aria-label="Agent settings" onClick={() => setDialog('settings')}><Settings2 size={16} /></button></div>
+      <div className="sidebar-footer"><span className="app-version" title="Installed version">v{appInfo.version || '…'}</span>{updateStatus.state==='ready' ? <button className="update-ready" title="Restart to update" aria-label="Restart to update" onClick={()=>window.j2code.installUpdate().catch(error=>notify(String(error),'error'))}><Download size={13}/></button> : null}<button className={`footer-settings ${settingsOpen ? 'active' : ''}`} title="Agent settings" aria-label="Agent settings" onClick={() => setSettingsOpen(true)}><Settings2 size={15} /><span>Settings</span></button></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)} />}
 
     <main className="main-area">
+      {settingsOpen ? <>
+        <header className="topbar settings-topbar"><button className="ghost-button" onClick={() => setSettingsOpen(false)}><ChevronRight size={15} className="back-chevron"/>Back to chat</button><strong>Settings</strong></header>
+        <section className="settings-screen" aria-label="Settings"><div className="settings-content"><h1>Settings</h1><p className="settings-intro">Vulp <span>v{appInfo.version}</span></p><div className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div><h2>Providers</h2><p>Choose the installed CLIs available in the model picker.</p><div className="agent-list">{(['codex','claude','cursor','opencode'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); const Icon = providerIcons[id]; return <div className="agent-row" key={id}><span className="agent-initial"><Icon width={21} height={21}/></span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button></div></section>
+      </> : <>
+
       <header className="topbar">
         <div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar"><Menu size={18} /></button>{!providerLocked ? <ProjectPicker projects={snapshot.projects} current={activeProject} onSelect={project=>{selectProject(project);setActiveThreadId(null)}} onOpen={pickProject}/> : <span className="breadcrumb-project">{activeProject?.name || 'Workspace'}</span>}<ChevronRight size={14} className="breadcrumb-separator" /><strong>{activeThread?.title || 'New thread'}</strong></div>
         <div className="topbar-actions">
@@ -488,27 +498,27 @@ export default function App() {
             : activeThread && activeThread.messages.length > 0 ? <div className="messages-scroll" ref={messagesScrollRef} onScroll={event => { const el = event.currentTarget; nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90; }}><div className="messages-inner">
               {activeThread.messages.map((message, index) => <Fragment key={message.id}><div className={`message message-${message.role}`}>
                 <div className={`message-avatar ${message.role === 'assistant' ? 'agent-avatar' : ''}`}>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : <Terminal size={15} />}</div>
-                <div className="message-body"><div className="message-heading"><strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : 'Agent stopped'}</strong><time>{timeAgo(message.createdAt)}</time></div><div className="message-text"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{img: ({alt}) => <span className="markdown-image">[image: {alt || 'attachment'}]</span>, a: ({href, children}) => /^https?:\/\//i.test(href || '') ? <button className="markdown-link" onClick={() => window.j2code.openExternal(href!)}>{children}</button> : <span>{children}</span>}}>{message.text}</ReactMarkdown></div>{message.attachments?.length ? <div className="message-attachments">{message.attachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview ? <img src={file.preview} alt={file.name}/> : <File size={16}/>}<span>{file.name}</span></span>)}</div> : null}{message.role==='assistant' && <button className="copy-response" aria-label="Copy response" onClick={async()=>{try{await window.j2code.copyText(message.text);setCopiedId(message.id);setTimeout(()=>setCopiedId(null),1800)}catch(error){notify(String(error),'error')}}}>{copiedId===message.id?<Check size={13}/>:<Copy size={13}/>}<span>{copiedId===message.id?'Copied':'Copy'}</span></button>}</div>
+                <div className="message-body"><div className="message-heading"><strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : 'Agent stopped'}</strong><time>{timeAgo(message.createdAt)}</time></div><div className="message-text"><MessageMarkdown text={message.text}/></div>{message.attachments?.length ? <div className="message-attachments">{message.attachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview ? <img src={file.preview} alt={file.name}/> : <File size={16}/>}<span>{file.name}</span></span>)}</div> : null}{message.role==='assistant' && <button className="copy-response" aria-label="Copy response" onClick={async()=>{try{await window.j2code.copyText(message.text);setCopiedId(message.id);setTimeout(()=>setCopiedId(null),1800)}catch(error){notify(String(error),'error')}}}>{copiedId===message.id?<Check size={13}/>:<Copy size={13}/>}<span>{copiedId===message.id?'Copied':'Copy'}</span></button>}</div>
               </div>
               {message.role === 'user' && <ActivityFeed items={(activeThread.activity || []).filter(item => item.createdAt >= message.createdAt && item.createdAt < (activeThread.messages.slice(index + 1).find(next => next.role === 'user')?.createdAt ?? Infinity))} running={activeThread.running && !activeThread.messages.slice(index + 1).some(next => next.role === 'user')} />}
               </Fragment>)}
-              {activeStream && <div className="message message-assistant streaming-message"><div className="message-avatar agent-avatar">{providerNames[activeThread.provider]}</div><div className="message-body"><div className="message-heading"><strong>{providerNames[activeThread.provider]}</strong><LoaderCircle className="spin" size={11} /></div><div className="message-text"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{img: ({alt}) => <span className="markdown-image">[image: {alt || 'attachment'}]</span>, a: ({href, children}) => /^https?:\/\//i.test(href || '') ? <button className="markdown-link" onClick={() => window.j2code.openExternal(href!)}>{children}</button> : <span>{children}</span>}}>{activeStream}</ReactMarkdown></div></div></div>}
+              {activeStream && <div className="message message-assistant streaming-message"><div className="message-avatar agent-avatar">{providerNames[activeThread.provider]}</div><div className="message-body"><div className="message-heading"><strong>{providerNames[activeThread.provider]}</strong><LoaderCircle className="spin" size={11} /></div><div className="message-text"><MessageMarkdown text={activeStream}/></div></div></div>}
 
             </div></div>
             : <div className="empty-conversation"><JrmdShader/><img className="vulp-hero-logo" src="./vulp-logo.jpg" alt="Vulp fox" /><h1>New thread</h1><div className="starter-prompts">{[{title:'Explore this project',text:'Explain the architecture of this project and how its main parts fit together.',icon:Code2},{title:'Find a better way',text:'Review this project and suggest the most valuable improvements.',icon:Sparkles},{title:'Solve a problem',text:'Help me investigate a problem in this project: ',icon:Terminal}].map(({title,text,icon:Icon}) => <button key={title} onClick={() => { setDraft(text); inputRef.current?.focus(); }}><Icon size={18}/><span>{title}</span><ArrowUp size={14}/></button>)}</div><span className="hero-project">Working in {activeProject.name}</span></div>}
 
           {activeProject && <div className="composer-zone">
-              <div className="attachment-actions"><button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || !!activeThread?.running || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button></div>
             {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending || !!activeThread?.running} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
               <div className="composer" onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
               <textarea onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask for a change, or ask a question…' : 'Install an agent CLI to start…'} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
               <div className="composer-bottom">
+                <button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || !!activeThread?.running || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button>
                 <div className="model-wrap">
                   <button className="model-select" data-testid="model-selector" aria-label="Select model" aria-expanded={modelOpen} onClick={() => { setModelOpen(!modelOpen); setProviderOpen(false); setEffortOpen(false); setModelQuery(''); setModelFilter(activeProvider); if (window.innerWidth <= 900) setChangesOpen(false); }} disabled={!!activeThread?.running || modelBusy || (providerLocked && !providerEnabled)}><ProviderIcon style={{width:16,height:16}} /><span className="model-current" title={activeModel || 'CLI default'}>{modelCatalogue?.options.find(option => option.id === activeModel)?.label || activeModel || `${providerNames[activeProvider]} · Default`}</span><ChevronDown size={13} /></button>
                   {modelOpen && <div className="model-menu model-browser" role="dialog" aria-label="Choose a model">
                     <div className="model-provider-filters" role="tablist" aria-label="Providers" aria-orientation="vertical">
                       {enabledProviders.filter(provider => provider.available && (!providerLocked || provider.id === activeProvider)).map(provider => { const Icon = providerIcons[provider.id]; return <button role="tab" aria-selected={modelFilter === provider.id} aria-controls="model-tab-panel" id={`provider-tab-${provider.id}`} key={provider.id} title={provider.id === 'codex' ? 'OpenAI / Codex' : provider.name} aria-label={provider.name} onClick={() => setModelFilter(provider.id)}><Icon style={{width:19,height:19}} /></button>; })}
-                      <button title="Manage providers" aria-label="Manage providers" className="model-settings-icon" onClick={() => { setModelOpen(false); setDialog('settings'); }}><Settings2 size={16} /></button>
+                      <button title="Manage providers" aria-label="Manage providers" className="model-settings-icon" onClick={() => { setModelOpen(false); setSettingsOpen(true); }}><Settings2 size={16} /></button>
                     </div>
                     <div className="model-tab-content" role="tabpanel" id="model-tab-panel" aria-labelledby={`provider-tab-${modelFilter}`}>
                     <div className="model-search"><Search size={13} /><input aria-label="Search models or enter exact model ID" autoFocus value={modelQuery} onChange={event => setModelQuery(event.target.value)} placeholder="Find a model…" /></div>
@@ -540,7 +550,7 @@ export default function App() {
                 {activeThread?.running ? <button className="send-button stop-button" onClick={() => window.j2code.cancel(activeThread.id)} title="Stop generation" aria-label="Stop generation"><Square size={13} fill="currentColor" /></button> : <button className="send-button" onClick={send} disabled={!canSend} title="Send message" aria-label="Send message">{sending ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={17} />}</button>}
               </div>
             </div>
-            {!providerEnabled && <div className="composer-footnote">This provider is disabled. <button className="markdown-link" onClick={() => setDialog('settings')}>Enable it in Settings</button> to send messages.</div>}
+            {!providerEnabled && <div className="composer-footnote">This provider is disabled. <button className="markdown-link" onClick={() => setSettingsOpen(true)}>Enable it in Settings</button> to send messages.</div>}
             {!providerInstalled && <div className="composer-footnote">No agent CLI found. Install one and refresh discovery in Settings.</div>}
           </div>}
         </section>
@@ -555,16 +565,16 @@ export default function App() {
           <div className="changes-footer"><button className="commit-action" onClick={() => setDialog('commit')} disabled={!git.isRepository || selectedFiles.length === 0}><GitCommitHorizontal size={17} />Commit changes{selectedFiles.length > 0 ? ` (${selectedFiles.length})` : ''}</button><div className="secondary-actions"><button onClick={() => setDialog('push')} disabled={!git.isRepository || !git.pushTarget} title={git.pushTarget ? `Push to ${git.pushTarget}` : 'Configure an upstream branch to push'}><ArrowUp size={15} />Push</button><button onClick={() => setDialog('pr')} disabled={!git.isRepository} title="Create pull request"><GitPullRequest size={15} />Create PR</button></div></div>
         </aside>
       </div>
-    </main>
+    </> }</main>
 
-    {dialog && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setDialog(null); }}><div className="dialog" role="dialog" aria-modal="true"><div className="dialog-head"><div className="dialog-icon">{dialog === 'commit' ? <GitCommitHorizontal size={21} /> : dialog === 'push' ? <ArrowUp size={21} /> : dialog === 'pr' ? <GitPullRequest size={21} /> : dialog === 'settings' ? <Settings2 size={21} /> : dialog === 'removeProject' ? <Folder size={21} /> : <Trash2 size={21} />}</div><button className="icon-button" onClick={() => setDialog(null)} aria-label="Close"><X size={18} /></button></div><h2>{dialog === 'commit' ? 'Commit changes' : dialog === 'push' ? 'Push branch' : dialog === 'pr' ? 'Create pull request' : dialog === 'settings' ? 'Agent settings' : dialog === 'removeProject' ? 'Remove project' : 'Delete thread'}</h2>
+    {dialog && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setDialog(null); }}><div className="dialog" role="dialog" aria-modal="true"><div className="dialog-head"><div className="dialog-icon">{dialog === 'commit' ? <GitCommitHorizontal size={21} /> : dialog === 'push' ? <ArrowUp size={21} /> : dialog === 'pr' ? <GitPullRequest size={21} /> : dialog === 'removeProject' ? <Folder size={21} /> : <Trash2 size={21} />}</div><button className="icon-button" onClick={() => setDialog(null)} aria-label="Close"><X size={18} /></button></div><h2>{dialog === 'commit' ? 'Commit changes' : dialog === 'push' ? 'Push branch' : dialog === 'pr' ? 'Create pull request' : dialog === 'removeProject' ? 'Remove project' : 'Delete thread'}</h2>
       {dialog === 'commit' && <><p>Commit {selectedFiles.length} selected {selectedFiles.length === 1 ? 'file' : 'files'} on <strong>{git.branch}</strong>.</p><div className="dialog-file-list">{selectedFiles.map(file => <div key={file}><File size={14} />{file}</div>)}</div><label className="field-label" htmlFor="commit-message">Commit message</label><input id="commit-message" autoFocus value={commitMessage} onChange={event => setCommitMessage(event.target.value)} placeholder="Describe your changes" onKeyDown={event => { if (event.key === 'Enter' && commitMessage.trim()) performAction(); }} /></>}
       {dialog === 'push' && <p>Push <strong>{git.branch}</strong> to <strong>{git.pushTarget || 'an upstream branch'}</strong>. {git.ahead > 0 ? `${git.ahead} commit${git.ahead === 1 ? '' : 's'} ahead.` : ''}</p>}
       {dialog === 'pr' && <><p>Open a pull request for <strong>{git.branch}</strong>. {!git.pushTarget ? 'Configure an upstream branch first.' : git.ahead > 0 ? `Push ${git.ahead} local commit${git.ahead === 1 ? '' : 's'} before creating the pull request.` : `Branch is pushed to ${git.pushTarget}.`}</p><label className="field-label" htmlFor="pr-title">Title</label><input id="pr-title" autoFocus value={prTitle} onChange={event => setPrTitle(event.target.value)} placeholder="What does this change?" /><label className="field-label" htmlFor="pr-body">Description</label><textarea id="pr-body" value={prBody} onChange={event => setPrBody(event.target.value)} placeholder="Add context for reviewers…" rows={5} /><label className="draft-toggle"><input type="checkbox" checked={prDraft} onChange={event => setPrDraft(event.target.checked)} /><span>Open as draft</span></label></>}
       {dialog === 'delete' && <p>Delete <strong>{activeThread?.title || 'this thread'}</strong>? The conversation will be removed from this workspace.</p>}
       {dialog === 'removeProject' && <p>Remove <strong>{projectToRemove?.name}</strong> from Vulp? Its conversations will be removed from the app. The folder and files stay on disk.</p>}
-      {dialog === 'settings' && <><div className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div><p>Choose which providers appear in the model picker. Disabling one keeps its conversations and lets any current run finish.</p><div className="agent-list">{(['codex','claude','cursor','opencode'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); return <div className="agent-row" key={id}><span className="agent-initial">{providerNames[id].slice(0, 1)}</span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button></>}
-      <div className="dialog-actions"><button className="ghost-button" onClick={() => setDialog(null)}>{dialog === 'settings' ? 'Close' : 'Cancel'}</button>{dialog !== 'settings' && <button className={`primary-button ${dialog === 'delete' || dialog === 'removeProject' ? 'danger-button' : ''}`} onClick={performAction} disabled={busy || (dialog === 'commit' && (!commitMessage.trim() || selectedFiles.length === 0)) || (dialog === 'push' && !git.pushTarget) || (dialog === 'pr' && (!prTitle.trim() || !git.pushTarget || git.ahead > 0))}>{busy ? <LoaderCircle size={16} className="spin" /> : dialog === 'commit' ? <GitCommitHorizontal size={16} /> : dialog === 'push' ? <ArrowUp size={16} /> : dialog === 'pr' ? <GitPullRequest size={16} /> : dialog === 'removeProject' ? <Folder size={16} /> : <Trash2 size={16} />}{dialog === 'commit' ? 'Commit' : dialog === 'push' ? 'Push branch' : dialog === 'pr' ? 'Create PR' : dialog === 'removeProject' ? 'Remove project' : 'Delete thread'}</button>}</div></div></div>}
+
+      <div className="dialog-actions"><button className="ghost-button" onClick={() => setDialog(null)}>Cancel</button><button className={`primary-button ${dialog === 'delete' || dialog === 'removeProject' ? 'danger-button' : ''}`} onClick={performAction} disabled={busy || (dialog === 'commit' && (!commitMessage.trim() || selectedFiles.length === 0)) || (dialog === 'push' && !git.pushTarget) || (dialog === 'pr' && (!prTitle.trim() || !git.pushTarget || git.ahead > 0))}>{busy ? <LoaderCircle size={16} className="spin" /> : dialog === 'commit' ? <GitCommitHorizontal size={16} /> : dialog === 'push' ? <ArrowUp size={16} /> : dialog === 'pr' ? <GitPullRequest size={16} /> : dialog === 'removeProject' ? <Folder size={16} /> : <Trash2 size={16} />}{dialog === 'commit' ? 'Commit' : dialog === 'push' ? 'Push branch' : dialog === 'pr' ? 'Create PR' : dialog === 'removeProject' ? 'Remove project' : 'Delete thread'}</button></div></div></div>}
     {toast && <div className={`toast toast-${toast.kind}`}>{toast.kind === 'success' ? <CircleCheck size={17} /> : <CircleAlert size={17} />}{toast.text}<button onClick={() => setToast(null)} aria-label="Dismiss"><X size={14} /></button></div>}
   </div>;
 }

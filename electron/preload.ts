@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppEvent, DesktopApi } from '../shared/api.js';
 
 const api: DesktopApi = {
+  getAppInfo: () => ipcRenderer.invoke('app-info'),
   pickAttachments: () => ipcRenderer.invoke('pick-attachments'),
   importAttachment: (name, bytes) => ipcRenderer.invoke('import-attachment', name, bytes),
   copyText: text => ipcRenderer.invoke('copy-text', text),

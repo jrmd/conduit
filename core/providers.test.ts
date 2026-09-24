@@ -240,3 +240,29 @@ describe('provider process runner', () => {
     }
   });
 });
+
+// Exercise the real subprocess path as well as the block reconciliation unit tests.
+it('Claude runner preserves repeated deltas and reconciles assistant snapshots', async () => {
+  if (process.platform === 'win32') return;
+  const root = await mkdtemp(join(tmpdir(), 'vulp-claude-stream-'));
+  const cli = join(root, 'claude');
+  const records = [
+    { type: 'stream_event', event: { type: 'message_start' } },
+    ...['go', ' ', 'go'].map(text => ({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } } })),
+    { type: 'assistant', message: { id: 'one', content: [{ type: 'text', text: 'go go' }] } },
+    { type: 'assistant', message: { id: 'two', content: [{ type: 'text', text: 'go go' }] } },
+  ];
+  const originalPath = process.env.PATH;
+  try {
+    await writeFile(cli, `#!${process.execPath}\nfor(const record of ${JSON.stringify(records)}) console.log(JSON.stringify(record));\n`);
+    await chmod(cli, 0o755);
+    process.env.PATH = `${root}:${originalPath || ''}`;
+    let result = '';
+    await runProvider({ provider: 'claude', cwd: root, prompt: 'test', signal: new AbortController().signal, onEvent: event => { if (event.kind === 'text') result += event.text; } });
+    assert.equal(result, 'go go\n\ngo go');
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    await rm(root, { recursive: true, force: true });
+  }
+});

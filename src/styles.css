@@ -508,3 +508,71 @@ body{background:#070c15;color:#dce5f3}
 @media(max-width:850px){.composer .composer-bottom{gap:5px}.composer-bottom .model-select{max-width:180px}.composer-bottom .mode-select{font-size:10px;padding:5px}}
 
 .composer textarea:focus-visible{outline:none;box-shadow:none}
+
+/* Desktop navigation: compact hierarchy, restrained surfaces. */
+.sidebar{width:240px;min-width:240px;background:#111316;border-right:1px solid #272a2f}
+.sidebar-top{height:58px;min-height:58px;padding:0 15px;justify-content:space-between}
+.sidebar-content{padding:0 10px 16px}
+.sidebar .new-thread-button{height:34px;margin:3px 0 23px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#dedfe3;box-shadow:none;font-size:13px}
+.sidebar .new-thread-button:hover:not(:disabled){background:#22252b;border:0;box-shadow:none;filter:none;transform:none}
+.sidebar .new-thread-button>svg{color:#aaaeb7}
+.new-thread-button kbd{margin-left:auto;color:#727781;font:10px inherit;border:1px solid #30343b;border-radius:4px;padding:2px 4px}
+.projects-heading{margin:0 8px 6px;color:#747a85;font-size:11px;font-weight:500}
+.project-row{height:32px;color:#a6abb4;background:transparent}
+.project-title{height:32px;font-size:12px;font-weight:500;gap:7px}
+.project-title svg{width:13px;color:#7a808a}
+.project-row.active{color:#d4d7dd}
+.project-row:hover{background:#1d2026}
+.project-threads{margin:1px 0 16px 12px;padding-left:8px;border:0}
+.thread-item{min-height:32px;padding:6px 9px;font-size:12px;color:#979da7;border-radius:5px}
+.thread-item:hover{background:#202329;color:#e0e2e6}
+.thread-item.active{background:#292d34;color:#f1f2f4}
+.thread-item.active:before{display:none}
+.sidebar-empty{padding:7px 9px;font-size:11px;color:#646b76}
+.sidebar-footer{height:49px;min-height:49px;padding:0 16px;border-top:1px solid #272a2f;gap:12px}
+.app-version{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#737b87;white-space:nowrap}
+.footer-settings{display:flex;align-items:center;gap:7px;padding:6px 7px;border:0;border-radius:5px;background:transparent;color:#979fa9;font-size:12px}
+.footer-settings:hover,.footer-settings.active{background:#24282e;color:#e1e4e8}
+.settings-topbar{justify-content:flex-start;gap:24px}
+.back-chevron{transform:rotate(180deg)}
+.settings-screen{flex:1;min-height:0;overflow:auto;background:#0e1117}
+.settings-content{max-width:790px;padding:48px 40px 64px;margin:0 auto}
+.settings-content h1{font-size:26px;letter-spacing:-.7px;font-weight:600;margin:0 0 8px;color:#e3e6eb}
+.settings-intro{color:#929aa8;font-size:13px;margin:0 0 32px}
+.settings-intro span{margin-left:5px;color:#697586}
+.settings-content h2{margin:36px 0 8px;font-size:15px;font-weight:500}
+.settings-content p{font-size:13px;color:#929ba9;line-height:1.6}
+.settings-content .update-settings{padding:20px 0;align-items:flex-start;border-color:#282e39}
+.settings-content .update-settings strong{font-size:14px;font-weight:500}
+.settings-content .update-settings small{font-size:12px;max-width:460px}
+.settings-content .agent-list{margin-top:24px;border:0;background:transparent}
+.settings-content .agent-row{padding:20px 0;border-bottom:1px solid #242b35;gap:14px}
+.settings-content .agent-initial svg{width:21px;height:21px}
+.settings-content .agent-initial{background:transparent;border:0;color:#c6cbd3;width:28px;flex-shrink:0}
+.settings-content .agent-row strong{font-size:13px;font-weight:500}
+.settings-content .agent-row small{max-width:440px;white-space:normal;overflow-wrap:anywhere;line-height:1.6;margin-top:5px}
+.settings-content .agent-state{font-size:10px;color:#7e8b9e}
+.settings-content .refresh-agents{margin-top:24px}
+.composer-bottom .attach-button{flex-shrink:0;margin-right:0}
+.composer-bottom .model-wrap{min-width:0}
+.message-assistant .message-heading strong{color:#929ca9;font-weight:500}
+.message-text{font-size:14px;line-height:1.75;color:#d7dce5}
+.message-text p{margin:0 0 14px}
+.message-text h1{font-size:22px}.message-text h2{font-size:18px}.message-text h3{font-size:16px}
+.message-text h1,.message-text h2,.message-text h3{margin:24px 0 12px;font-weight:600}
+.message-text>:first-child{margin-top:0}
+.message-text ul,.message-text ol{margin:10px 0 16px;padding-left:24px}
+.message-text li{margin:5px 0}.message-text li>p{margin:6px 0}
+.message-text a{color:#95b9de;text-decoration:underline;text-underline-offset:3px}
+.message-text table{font-size:13px;margin:18px 0}.message-text td,.message-text th{padding:9px 12px;border-color:#303946}
+.message-text code{font-size:.88em}
+.code-block{margin:16px 0;border:1px solid #29333e;border-radius:8px;overflow:hidden;background:#0c1118}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #232d39;color:#8593a5;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}
+.code-block-header button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:2px 4px}
+.code-block-header button:hover{color:#e2e9f2}
+.message-text .code-block pre{margin:0;padding:16px;border:0;border-radius:0;background:transparent;font-size:12px;line-height:1.7}
+.platform-darwin .sidebar-top{padding-left:94px}
+.platform-darwin .sidebar-top,.platform-darwin .topbar{-webkit-app-region:drag;app-region:drag}
+.platform-darwin button,.platform-darwin input,.platform-darwin [role=dialog]{-webkit-app-region:no-drag;app-region:no-drag}
+@media(max-width:1000px){.sidebar{width:218px;min-width:218px}.settings-content{padding:32px 26px}.composer .composer-bottom{gap:7px}.composer-bottom .model-select{max-width:175px}}
+@media(max-width:850px){.composer-bottom .model-select{max-width:160px}.composer .composer-bottom{gap:5px}.settings-content .agent-state{display:none}}

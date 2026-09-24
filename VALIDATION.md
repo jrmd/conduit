@@ -104,3 +104,11 @@ Typecheck/build and Electron replay smoke passed. The smoke verifies a linked We
 ## Inline composer controls (0.3.2)
 
 Moved model, effort, and permission controls into the composer below the textarea, vertically aligned with Send/Stop. Attachment action and preview chips remain above the composer. Typecheck and Electron replay smoke passed, including a geometry assertion for controls below the input and sharing the send-button centreline. Screenshots inspected at desktop and compact sizes; popovers, focus return, attachments, cancellation, and permission changes remain covered.
+
+## Vulp 0.3.3 — desktop layout and response rendering
+
+- `pnpm typecheck`, `pnpm test`: pass (34 tests). New response-stream regressions cover repeated Claude deltas, final snapshot reconciliation, repeated complete messages, block boundaries and forwarded child exclusion. A replay CLI also exercises the real runner path.
+- `pnpm package:linux`: AppImage built successfully.
+- `J2CODE_SMOKE_PACKAGED=1 node scripts/smoke-workspace-controls.mjs`: checks the packaged Linux renderer, installed version, dedicated Settings screen, draft preservation, provider switches, 850px settings scrolling, lower-row paperclip and upper attachment previews, model/send alignment, rich Markdown, code/response clipboard contents, separate Codex message boundaries, tool/subagent activity, permission switching and cancellation.
+- Inspected screenshots at 1440×900 and 850×600. A simulated macOS CSS class verifies header drag/no-drag regions and 94px logo clearance. This is not native macOS window verification.
+- T3 source findings and remaining architectural differences are recorded in `docs/t3-response-notes.md`. No fresh authenticated Claude/OpenCode/Cursor run was performed for these changes.

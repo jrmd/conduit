@@ -105,6 +105,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
 }
 
 function registerIpc() {
+  handle('app-info', () => ({ version: app.getVersion(), platform: process.platform }));
   handle('update-status', () => updates.getStatus());
   handle('update-check', () => updates.check());
   handle('update-install', () => updates.install());
@@ -208,6 +209,7 @@ function registerIpc() {
 
 async function createWindow() {
   win = new BrowserWindow({
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 20 } } : {}),
     title: 'Vulp', width: 1440, height: 900, minWidth: 850, minHeight: 600,
     backgroundColor: '#070c15', autoHideMenuBar: true, icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true }

@@ -18,6 +18,7 @@ export type AppEvent = { type: 'activity'; threadId: string; activity: Activity 
 export interface CommitInput { projectId: string; files: string[]; message: string; }
 export interface PRInput { projectId: string; title: string; body: string; base?: string; draft: boolean; }
 export interface DesktopApi {
+  getAppInfo(): Promise<{ version: string; platform: string }>;
   pickAttachments(): Promise<Attachment[]>;
   importAttachment(name: string, bytes: Uint8Array): Promise<Attachment>;
   copyText(text: string): Promise<void>;
