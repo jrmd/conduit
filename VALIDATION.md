@@ -120,3 +120,7 @@ Moved model, effort, and permission controls into the composer below the textare
 - Appearance settings offer System (default), Light and Dark, saved locally across restart. System observes live OS changes. Native Electron menus/window background follow the selected appearance.
 - `pnpm typecheck`, Linux packaging and both packaged smoke scripts pass. `scripts/smoke-appearance.mjs` covers system changes, explicit overrides, stored preference after restart, shader uniform values in both themes and empty-project to new-project navigation. `scripts/smoke-workspace-controls.mjs` also captures light-mode rich responses and expanded activity.
 - Inspected screenshots at 1440×900 and 850×600; native Mac/Windows appearance remains unverified on this Linux host.
+
+## Vulp 0.3.5 — Changes header actions
+
+Commit, Push and Create PR now live in a compact Actions menu in the Changes header; the footer actions were removed. Existing dialogs and Git preconditions are preserved. `pnpm typecheck`, build and packaged `scripts/smoke-git-actions.mjs` pass. The isolated Git fixture verifies file-selection/upstream guards, Commit/PR dialog routing, arrow-key navigation, Escape focus return, outside dismissal, and light/dark layouts without executing a push or PR. Light-mode file and branch labels were also corrected during visual inspection.

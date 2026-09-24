@@ -101,3 +101,7 @@ html[data-theme=light]{background:#f8f9fb;color:#263345}
 [data-theme=light] .effort-ultra{--effort-color:#91429a}
 [data-theme=light] .effort-max{--effort-color:#7854a8}
 [data-theme=light] .effort-high,[data-theme=light] .effort-xhigh{--effort-color:#3668a0}
+[data-theme=light] :is(.repo-summary strong,.file-detail strong){color:#344d68}
+[data-theme=light] .file-detail small{color:#687d94}
+[data-theme=light] .changes-count{background:#dce7f2;color:#355674}
+[data-theme=light] .changes-toggle.is-on{background:#e0eaf4;color:#355674}
