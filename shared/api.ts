@@ -17,7 +17,10 @@ export interface GitStatus { branch: string; files: ChangedFile[]; ahead: number
 export type AppEvent = { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
 export interface CommitInput { projectId: string; files: string[]; message: string; }
 export interface PRInput { projectId: string; title: string; body: string; base?: string; draft: boolean; }
+export interface ComposerItem { id: string; kind: 'file' | 'skill' | 'plugin'; name: string; description: string; token: string; path?: string; }
+export interface SendOptions { title?: { provider: ProviderId; model?: string }; references?: string[]; }
 export interface DesktopApi {
+  getComposerItems(projectId: string, provider: ProviderId, kind: 'file' | 'capability', query: string): Promise<{items: ComposerItem[]; warning?: string}>;
   threadPR(threadId: string): Promise<{number: number; url: string; state: string; title: string} | null>;
   settleThread(threadId: string, settled: boolean): Promise<void>;
   summarizeThread(threadId: string, provider: ProviderId, model?: string): Promise<void>;
@@ -39,7 +42,7 @@ export interface DesktopApi {
   updateThreadConfig(threadId: string, config: ThreadConfig): Promise<Thread>;
   updateThreadModel(threadId: string, model?: string): Promise<Thread>;
   deleteThread(threadId: string): Promise<void>;
-  send(threadId: string, prompt: string, attachments?: string[]): Promise<void>;
+  send(threadId: string, prompt: string, attachments?: string[], options?: SendOptions): Promise<void>;
   cancel(threadId: string): Promise<void>;
   getGit(projectId: string): Promise<GitStatus>;
   getDiff(projectId: string, file: string): Promise<string>;

@@ -642,3 +642,23 @@ button.icon-button{line-height:1}
 [data-theme=light] .summary-settings label{color:#536d87}
 [data-theme=light] .summary-settings select{background:#fff;color:#344d68;border-color:#c9d5e2}
 @media(max-width:1000px){.thread-pr-link span:last-child{display:none}}
+
+.composer { position: relative; }
+.composer-autocomplete { position:absolute; bottom:calc(100% + 8px); left:12px; z-index:60; width:min(440px,calc(100% - 24px)); border:1px solid #293648; border-radius:12px; background:#101823; box-shadow:0 14px 40px #0006; overflow:hidden; text-align:left; }
+.composer-autocomplete header,.composer-autocomplete footer { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; font-size:11px; color:#93a3b8; gap:10px; }
+.composer-autocomplete header { font-weight:600; border-bottom:1px solid #ffffff0a; }
+.composer-autocomplete [role=listbox] { max-height:240px; overflow:auto; padding:5px; }
+.composer-autocomplete [role=option] { display:flex; align-items:center; gap:10px; width:100%; padding:9px; border:0; border-radius:7px; background:transparent; text-align:left; color:#afbed1; }
+.composer-autocomplete [role=option][aria-selected=true] { background:#243244; color:#e9f4ff; }
+.composer-autocomplete [role=option] > svg { flex-shrink:0; color:#7ea9c8; }
+.composer-autocomplete [role=option] > span { min-width:0; flex:1; }
+.composer-autocomplete strong,.composer-autocomplete small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.composer-autocomplete strong { font-size:12px; font-weight:500; }
+.composer-autocomplete small { margin-top:3px; font-size:11px; opacity:.65; }
+.composer-autocomplete em { font-size:10px; font-style:normal; opacity:.55; }
+.composer-autocomplete p { margin:10px; font-size:12px; color:#99a8ba; }
+.composer-autocomplete .autocomplete-warning { font-size:10px; line-height:1.5; }
+.composer-autocomplete footer { border-top:1px solid #ffffff0a; font-size:10px; }
+[data-theme=light] .composer-autocomplete { background:#fff; border-color:#d7e0e8; box-shadow:0 14px 40px #233e5a20; }
+[data-theme=light] .composer-autocomplete [role=option] { color:#38465b; }
+[data-theme=light] .composer-autocomplete [role=option][aria-selected=true] { background:#eaf1f8; color:#17283d; }

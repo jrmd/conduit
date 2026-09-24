@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppEvent, DesktopApi } from '../shared/api.js';
 
 const api: DesktopApi = {
+  getComposerItems: (id, provider, kind, query) => ipcRenderer.invoke('composer-items', id, provider, kind, query),
   threadPR: id => ipcRenderer.invoke('thread-pr', id),
   settleThread: (id, settled) => ipcRenderer.invoke('settle-thread', id, settled),
   summarizeThread: (id, provider, model) => ipcRenderer.invoke('summarize-thread', id, provider, model),
@@ -23,7 +24,7 @@ const api: DesktopApi = {
   updateThreadConfig: (threadId, config) => ipcRenderer.invoke('configure-thread', threadId, config),
   updateThreadModel: (threadId, model) => ipcRenderer.invoke('update-thread-model', threadId, model),
   deleteThread: threadId => ipcRenderer.invoke('delete-thread', threadId),
-  send: (threadId, prompt, attachments) => ipcRenderer.invoke('send', threadId, prompt, attachments),
+  send: (threadId, prompt, attachments, options) => ipcRenderer.invoke('send', threadId, prompt, attachments, options),
   cancel: threadId => ipcRenderer.invoke('cancel', threadId),
   getGit: projectId => ipcRenderer.invoke('git-status', projectId),
   getDiff: (projectId, file) => ipcRenderer.invoke('git-diff', projectId, file),

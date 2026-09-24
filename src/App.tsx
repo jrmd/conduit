@@ -1,3 +1,4 @@
+import { useComposerAutocomplete } from './ComposerAutocomplete';
 import { ThreadPR } from './ThreadPR';
 import { SummarySettings, readSummaryChoice, type SummaryChoice } from './SummarySettings';
 import { GitActions } from './GitActions';
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import { ActivityFeed } from './ActivityFeed';
 import { MessageMarkdown } from './MessageMarkdown';
-import type { Attachment, UpdateStatus, ChangedFile, GitStatus, ModelCatalogue, Project, ProviderId, Snapshot } from '../shared/api';
+import type { ComposerItem, Attachment, UpdateStatus, ChangedFile, GitStatus, ModelCatalogue, Project, ProviderId, Snapshot } from '../shared/api';
 
 type Dialog = 'commit' | 'push' | 'pr' | 'delete' | 'removeProject' | null;
 type Toast = { text: string; kind: 'success' | 'error' } | null;
@@ -81,6 +82,7 @@ export default function App() {
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
+  const [references, setReferences] = useState<Record<string, { provider: ProviderId; items: ComposerItem[] }>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [git, setGit] = useState<GitStatus>(initialGit);
@@ -127,6 +129,9 @@ export default function App() {
     void refresh();const timer=setInterval(refresh,2000);return()=>{alive=false;clearInterval(timer)};
   },[]);
   const setDraft = (value: string) => setDrafts(previous => ({ ...previous, [draftKey]: value }));
+  const referenceDraft = references[draftKey];
+  const selectedReferences = referenceDraft?.provider === activeProvider ? referenceDraft.items.filter(item => draft.includes(item.token)) : [];
+  const autocomplete = useComposerAutocomplete({ value: draft, projectId: activeProjectId || undefined, provider: activeProvider, input: inputRef, onChange: setDraft, onChoose: item => setReferences(previous => ({ ...previous, [draftKey]: { provider: activeProvider, items: [...selectedReferences.filter(existing => existing.id !== item.id), item] } })) });
   const activeActivity = activeThreadId ? activityByThread[activeThreadId] || '' : '';
   const activeStream = activeThreadId ? streamByThread[activeThreadId] || '' : '';
   const providerInstalled = snapshot.providers.some(provider => provider.id === activeProvider && provider.available);
@@ -318,12 +323,13 @@ export default function App() {
         setActiveThreadId(thread.id);
         threadId = thread.id;
       }
-      await window.j2code.send(threadId, text, draftAttachments.map(file=>file.id));
+      await window.j2code.send(threadId, text, draftAttachments.map(file=>file.id), { title: summaryChoice || undefined, references: selectedReferences.map(item => item.id) });
+      setReferences(previous => ({ ...previous, [draftKey]: { provider: activeProvider, items: [] } }));
       setAttachmentDrafts(previous=>({...previous,[draftKey]:[],[threadId!]:[]}));
       const acceptedThreadId = threadId;
       setDrafts(previous => ({ ...previous, [draftKey]: '', [acceptedThreadId]: '' }));
     } catch (error) {
-      if (threadId) { const failedThreadId = threadId; setAttachmentDrafts(previous=>({...previous,[failedThreadId]:draftAttachments})); setDrafts(previous => ({ ...previous, [failedThreadId]: text })); }
+      if (threadId) { const failedThreadId = threadId; setReferences(previous => ({ ...previous, [failedThreadId]: { provider: activeProvider, items: selectedReferences } })); setAttachmentDrafts(previous=>({...previous,[failedThreadId]:draftAttachments})); setDrafts(previous => ({ ...previous, [failedThreadId]: text })); }
       notify(String(error), 'error');
     } finally { setSending(false); }
   }
@@ -449,9 +455,10 @@ export default function App() {
 
   async function summarize(id: string) {
     setContextMenu(null);
-    if (!summaryChoice) { setSettingsOpen(true); notify('Choose a summary provider and model in Settings', 'error'); return; }
+    const thread = snapshot.threads.find(t => t.id === id); if (!thread) return;
+    const choice = summaryChoice || { provider: thread.provider, model: thread.model };
     setSummaryBusy(id);
-    try { await window.j2code.summarizeThread(id, summaryChoice.provider, summaryChoice.model || undefined); notify('Thread summary updated'); }
+    try { await window.j2code.summarizeThread(id, choice.provider, choice.model || undefined); notify('Thread title updated'); }
     catch (error) { notify(String(error), 'error'); }
     finally { setSummaryBusy(null); }
   }
@@ -463,7 +470,7 @@ export default function App() {
   return <div className={`app-shell platform-${appInfo.platform}`}>
     {contextMenu && <div className="workspace-context-menu" role="menu" aria-label="Workspace actions" style={{left:Math.min(contextMenu.x,window.innerWidth-210),top:Math.min(contextMenu.y,window.innerHeight-220)}}>
       <button autoFocus role="menuitem" onClick={() => { const project=snapshot.projects.find(p=>p.id===contextMenu.projectId);if(project){selectProject(project);setActiveThreadId(null);} }}><Plus size={14}/>New thread here</button>
-      {contextMenu.threadId && <><button role="menuitem" disabled={!!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => settle(contextMenu.threadId!)}><Archive size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.settled ? 'Restore thread' : 'Settle thread'}</button><button role="menuitem" disabled={summaryBusy === contextMenu.threadId || !!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => summarize(contextMenu.threadId!)}><Sparkles size={14}/>Generate summary</button></>}
+      {contextMenu.threadId && <><button role="menuitem" disabled={!!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => settle(contextMenu.threadId!)}><Archive size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.settled ? 'Restore thread' : 'Settle thread'}</button><button role="menuitem" disabled={summaryBusy === contextMenu.threadId || !!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => summarize(contextMenu.threadId!)}><Sparkles size={14}/>Regenerate title</button></>}
       {contextMenu.threadId ? <button role="menuitem" onClick={() => {setActiveProjectId(contextMenu.projectId);setActiveThreadId(contextMenu.threadId!);setDialog('delete');}}><Trash2 size={14}/>Delete thread…</button> : <button role="menuitem" onClick={() => {setProjectToRemove(snapshot.projects.find(p=>p.id===contextMenu.projectId)!);setDialog('removeProject');}}><X size={14}/>Remove project…</button>}
     </div>}
     <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
@@ -489,7 +496,7 @@ export default function App() {
                 <button className="project-row-action remove" onClick={() => { setProjectToRemove(project); setDialog('removeProject'); }} title={`Remove ${project.name}`} aria-label={`Remove ${project.name}`}><X size={13} /></button>
               </div>
               {expanded && <div className="project-threads">
-                {threads.map(thread => <div className="sidebar-thread" key={thread.id}><button onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-text"><span className="thread-item-title">{thread.title || 'New thread'}</span>{(thread.branch || thread.branches?.length) && <small className="thread-branch" title={`Created on ${thread.branch || 'unknown branch'} · Run on ${(thread.branches || []).join(', ') || 'not run yet'}`}><GitBranch size={10}/>{thread.branches?.at(-1) || thread.branch}{thread.settled ? ' · settled' : ''}</small>}{thread.summary && <small className="thread-summary" title={thread.summary}>{thread.summary}</small>}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button><button className="thread-more" aria-label={`Actions for ${thread.title}`} onClick={event => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); setContextMenu({ x: box.left, y: box.bottom, projectId: project.id, threadId: thread.id }); }}><MoreHorizontal size={15}/></button></div>)}
+                {threads.map(thread => <div className="sidebar-thread" key={thread.id}><button onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-text"><span className="thread-item-title">{thread.title || 'New thread'}</span>{(thread.branch || thread.branches?.length) && <small className="thread-branch" title={`Created on ${thread.branch || 'unknown branch'} · Run on ${(thread.branches || []).join(', ') || 'not run yet'}`}><GitBranch size={10}/>{thread.branches?.at(-1) || thread.branch}{thread.settled ? ' · settled' : ''}</small>}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button><button className="thread-more" aria-label={`Actions for ${thread.title}`} onClick={event => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); setContextMenu({ x: box.left, y: box.bottom, projectId: project.id, threadId: thread.id }); }}><MoreHorizontal size={15}/></button></div>)}
                 {threads.length === 0 && <div className="sidebar-empty">{showSettled ? 'No settled threads' : 'No threads yet'}</div>}
               </div>}
             </div>;
@@ -536,7 +543,8 @@ export default function App() {
           {activeProject && <div className="composer-zone">
             {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending || !!activeThread?.running} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
               <div className="composer" onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
-              <textarea onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask for a change, or ask a question…' : 'Install an agent CLI to start…'} value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
+              {autocomplete.menu}
+              <textarea {...autocomplete.aria} onSelect={autocomplete.updateCaret} onBlur={autocomplete.dismiss} onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask anything… @ files · / skills & plugins' : 'Install an agent CLI to start…'} value={draft} onChange={event => { setDraft(event.target.value); autocomplete.updateCaret(); }} onKeyDown={event => { if (autocomplete.onKeyDown(event)) return; if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
               <div className="composer-bottom">
                 <button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || !!activeThread?.running || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button>
                 <div className="model-wrap">
