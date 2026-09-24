@@ -1,3 +1,5 @@
+import { ThreadPR } from './ThreadPR';
+import { SummarySettings, readSummaryChoice, type SummaryChoice } from './SummarySettings';
 import { GitActions } from './GitActions';
 import { useAppearance } from './appearance';
 import { JrmdShader } from './JrmdShader.webgl';
@@ -8,7 +10,7 @@ import { SimpleIconsCursor } from './icons/cursor';
 import { SimpleIconsOpencode } from './icons/opencode';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Copy, Paperclip, Download, Sparkles, Atom, Asterisk, MousePointer2, Zap, ArrowUp, Check, ChevronDown, ChevronRight, CircleAlert,
+  MoreHorizontal, Archive, Copy, Paperclip, Download, Sparkles, Atom, Asterisk, MousePointer2, Zap, ArrowUp, Check, ChevronDown, ChevronRight, CircleAlert,
   CircleCheck, Code2, File, FileCode2, FileDiff, Folder, FolderOpen,
   GitBranch, GitCommitHorizontal, GitPullRequest, LoaderCircle, Menu,
   MessageSquare, Plus, RefreshCw, Search, Settings2, Square, Terminal, Trash2, X,
@@ -49,6 +51,10 @@ function fileBadge(file: ChangedFile): string {
 
 export default function App() {
   const { appearance, setAppearance, theme } = useAppearance();
+  const [threadSearch, setThreadSearch] = useState('');
+  const [showSettled, setShowSettled] = useState(false);
+  const [summaryChoice, setSummaryChoice] = useState<SummaryChoice | null>(readSummaryChoice);
+  const [summaryBusy, setSummaryBusy] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot>({ projects: [], threads: [], providers: [], disabledProviders: [] });
   const [attachmentDrafts,setAttachmentDrafts] = useState<Record<string,Attachment[]>>({});
   const [attaching,setAttaching] = useState(false);
@@ -208,7 +214,7 @@ export default function App() {
       const firstProject = data.projects[0];
       if (firstProject) {
         setActiveProjectId(firstProject.id);
-        const firstThread = data.threads.filter(t => t.projectId === firstProject.id).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        const firstThread = data.threads.filter(t => t.projectId === firstProject.id && !t.settled).sort((a, b) => b.updatedAt - a.updatedAt)[0];
         setActiveThreadId(firstThread?.id || null);
       }
       const provider = data.providers.find(p => p.available && !data.disabledProviders.includes(p.id));
@@ -402,7 +408,7 @@ export default function App() {
     setSelectedFiles([]);
     setGit(initialGit);
     setDialog(null);
-    const thread = snapshot.threads.filter(t => t.projectId === project.id).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    const thread = snapshot.threads.filter(t => t.projectId === project.id && (!!t.settled === showSettled || !!threadSearch.trim()) && [t.title,t.summary,t.branch,...(t.branches || []),...t.messages.map(m => m.text)].join(' ').toLowerCase().includes(threadSearch.trim().toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt)[0];
     setActiveThreadId(thread?.id || null);
     setSidebarOpen(false);
   }
@@ -441,9 +447,23 @@ export default function App() {
   const changedCount = git.files.length;
   const canSend = (!!draft.trim() || !!draftAttachments.length) && !attaching && !!activeProject && !!providerInstalled && providerEnabled && !modelBusy && !sending && (activeThread ? !activeThread.running : true);
 
+  async function summarize(id: string) {
+    setContextMenu(null);
+    if (!summaryChoice) { setSettingsOpen(true); notify('Choose a summary provider and model in Settings', 'error'); return; }
+    setSummaryBusy(id);
+    try { await window.j2code.summarizeThread(id, summaryChoice.provider, summaryChoice.model || undefined); notify('Thread summary updated'); }
+    catch (error) { notify(String(error), 'error'); }
+    finally { setSummaryBusy(null); }
+  }
+  async function settle(id: string) {
+    setContextMenu(null);
+    try { await window.j2code.settleThread(id, !snapshot.threads.find(t => t.id === id)?.settled); }
+    catch (error) { notify(String(error), 'error'); }
+  }
   return <div className={`app-shell platform-${appInfo.platform}`}>
-    {contextMenu && <div className="workspace-context-menu" role="menu" aria-label="Workspace actions" style={{left:Math.min(contextMenu.x,window.innerWidth-210),top:Math.min(contextMenu.y,window.innerHeight-140)}}>
+    {contextMenu && <div className="workspace-context-menu" role="menu" aria-label="Workspace actions" style={{left:Math.min(contextMenu.x,window.innerWidth-210),top:Math.min(contextMenu.y,window.innerHeight-220)}}>
       <button autoFocus role="menuitem" onClick={() => { const project=snapshot.projects.find(p=>p.id===contextMenu.projectId);if(project){selectProject(project);setActiveThreadId(null);} }}><Plus size={14}/>New thread here</button>
+      {contextMenu.threadId && <><button role="menuitem" disabled={!!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => settle(contextMenu.threadId!)}><Archive size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.settled ? 'Restore thread' : 'Settle thread'}</button><button role="menuitem" disabled={summaryBusy === contextMenu.threadId || !!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => summarize(contextMenu.threadId!)}><Sparkles size={14}/>Generate summary</button></>}
       {contextMenu.threadId ? <button role="menuitem" onClick={() => {setActiveProjectId(contextMenu.projectId);setActiveThreadId(contextMenu.threadId!);setDialog('delete');}}><Trash2 size={14}/>Delete thread…</button> : <button role="menuitem" onClick={() => {setProjectToRemove(snapshot.projects.find(p=>p.id===contextMenu.projectId)!);setDialog('removeProject');}}><X size={14}/>Remove project…</button>}
     </div>}
     <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
@@ -454,10 +474,13 @@ export default function App() {
       <div className="sidebar-content">
         <button className="new-thread-button" disabled={!activeProject} onClick={() => { setSettingsOpen(false); setActiveThreadId(null); requestAnimationFrame(() => inputRef.current?.focus()); }}><Plus size={16} />New thread<kbd>{appInfo.platform === 'darwin' ? '⌘ N' : 'Ctrl N'}</kbd></button>
         <div className="section-heading projects-heading"><span>Projects</span><button className="icon-button" onClick={pickProject} title="Open project folder" aria-label="Open project folder"><Plus size={16} /></button></div>
+        <label className="thread-search"><Search size={14}/><input aria-label="Search threads" placeholder="Search threads…" value={threadSearch} onChange={e => setThreadSearch(e.target.value)}/>{threadSearch && <button aria-label="Clear thread search" onClick={() => setThreadSearch('')}><X size={12}/></button>}</label>
+        <div className="thread-sections"><button aria-pressed={!showSettled} onClick={() => setShowSettled(false)}>Active</button><button aria-pressed={showSettled} onClick={() => setShowSettled(true)}>Settled <span>{snapshot.threads.filter(t => t.settled).length || ''}</span></button></div>
         <div className="project-tree">
           {snapshot.projects.map(project => {
-            const threads = snapshot.threads.filter(t => t.projectId === project.id).sort((a, b) => b.updatedAt - a.updatedAt);
-            const expanded = expandedProjects[project.id] ?? true;
+            const threads = snapshot.threads.filter(t => t.projectId === project.id && (!!t.settled === showSettled || !!threadSearch.trim()) && [t.title,t.summary,t.branch,...(t.branches || []),...t.messages.map(m => m.text)].join(' ').toLowerCase().includes(threadSearch.trim().toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt);
+            const expanded = !!threadSearch || (expandedProjects[project.id] ?? true);
+            if (threadSearch.trim() && !threads.length) return null;
             return <div className="project-group" key={project.id}>
               <div className={`project-row ${activeProjectId === project.id ? 'active' : ''}`} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id}); }}>
                 <button className="project-disclosure" onClick={() => setExpandedProjects(previous => ({ ...previous, [project.id]: !expanded }))} title={expanded ? 'Collapse project' : 'Expand project'} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${project.name}`}><ChevronRight size={14} className={expanded ? 'rotate-down' : ''} /></button>
@@ -466,8 +489,8 @@ export default function App() {
                 <button className="project-row-action remove" onClick={() => { setProjectToRemove(project); setDialog('removeProject'); }} title={`Remove ${project.name}`} aria-label={`Remove ${project.name}`}><X size={13} /></button>
               </div>
               {expanded && <div className="project-threads">
-                {threads.map(thread => <button key={thread.id} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-title">{thread.title || 'New thread'}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button>)}
-                {threads.length === 0 && <div className="sidebar-empty">No threads yet</div>}
+                {threads.map(thread => <div className="sidebar-thread" key={thread.id}><button onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-text"><span className="thread-item-title">{thread.title || 'New thread'}</span>{(thread.branch || thread.branches?.length) && <small className="thread-branch" title={`Created on ${thread.branch || 'unknown branch'} · Run on ${(thread.branches || []).join(', ') || 'not run yet'}`}><GitBranch size={10}/>{thread.branches?.at(-1) || thread.branch}{thread.settled ? ' · settled' : ''}</small>}{thread.summary && <small className="thread-summary" title={thread.summary}>{thread.summary}</small>}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button><button className="thread-more" aria-label={`Actions for ${thread.title}`} onClick={event => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); setContextMenu({ x: box.left, y: box.bottom, projectId: project.id, threadId: thread.id }); }}><MoreHorizontal size={15}/></button></div>)}
+                {threads.length === 0 && <div className="sidebar-empty">{showSettled ? 'No settled threads' : 'No threads yet'}</div>}
               </div>}
             </div>;
           })}
@@ -481,7 +504,7 @@ export default function App() {
     <main className="main-area">
       {settingsOpen ? <>
         <header className="topbar settings-topbar"><button className="ghost-button" onClick={() => setSettingsOpen(false)}><ChevronRight size={15} className="back-chevron"/>Back to chat</button><strong>Settings</strong></header>
-        <section className="settings-screen" aria-label="Settings"><div className="settings-content"><h1>Settings</h1><p className="settings-intro">Vulp <span>v{appInfo.version}</span></p><div className="appearance-settings"><h2>Appearance</h2><p>Choose a theme or follow your system.</p><div className="appearance-options" role="group" aria-label="Appearance">{(['system', 'light', 'dark'] as const).map(value => <button key={value} aria-pressed={appearance === value} onClick={() => setAppearance(value)}>{value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}{appearance === value && <Check size={14}/>}</button>)}</div></div><div className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div><h2>Providers</h2><p>Choose the installed CLIs available in the model picker.</p><div className="agent-list">{(['codex','claude','cursor','opencode'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); const Icon = providerIcons[id]; return <div className="agent-row" key={id}><span className="agent-initial"><Icon width={21} height={21}/></span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button></div></section>
+        <section className="settings-screen" aria-label="Settings"><div className="settings-content"><h1>Settings</h1><p className="settings-intro">Vulp <span>v{appInfo.version}</span></p><div className="appearance-settings"><h2>Appearance</h2><p>Choose a theme or follow your system.</p><div className="appearance-options" role="group" aria-label="Appearance">{(['system', 'light', 'dark'] as const).map(value => <button key={value} aria-pressed={appearance === value} onClick={() => setAppearance(value)}>{value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}{appearance === value && <Check size={14}/>}</button>)}</div></div><div className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div><SummarySettings providers={snapshot.providers.filter(p => p.available && !snapshot.disabledProviders.includes(p.id))} choice={summaryChoice} onChange={choice => { setSummaryChoice(choice); localStorage.setItem('vulp.summary-model', JSON.stringify(choice)); }}/><h2>Providers</h2><p>Choose the installed CLIs available in the model picker.</p><div className="agent-list">{(['codex','claude','cursor','opencode'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); const Icon = providerIcons[id]; return <div className="agent-row" key={id}><span className="agent-initial"><Icon width={21} height={21}/></span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button></div></section>
       </> : <>
 
       <header className="topbar">
@@ -489,7 +512,7 @@ export default function App() {
         <div className="topbar-actions">
           {activeProject && git.isRepository && <div className="branch-pill"><GitBranch size={14} /><span>{git.branch || 'unknown'}</span></div>}
           
-          {activeThread && <button className="icon-button" title="Delete thread" onClick={() => setDialog('delete')}><Trash2 size={16} /></button>}
+          {activeThread && <ThreadPR key={activeThread.id} thread={activeThread}/>}
           <button className={`icon-button changes-toggle ${changesOpen ? 'is-on' : ''}`} title="Toggle changes" aria-label="Toggle changes" aria-expanded={changesOpen} onClick={() => setChangesOpen(!changesOpen)}><FileDiff size={16} /><span>Changes</span>{changedCount > 0 && <span className="count-dot">{changedCount}</span>}</button>
         </div>
       </header>

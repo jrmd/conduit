@@ -99,7 +99,7 @@ export class Store {
     await this.save();
     return structuredClone(message);
   }
-  async updateThread(id: string, update: Partial<Pick<Thread, 'sessionId' | 'running' | 'model' | 'effort'>>) {
+  async updateThread(id: string, update: Partial<Pick<Thread, 'sessionId' | 'running' | 'model' | 'effort' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled'>>) {
     const thread = this.getThread(id);
     Object.assign(thread, update);
     thread.updatedAt = Date.now();

@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppEvent, DesktopApi } from '../shared/api.js';
 
 const api: DesktopApi = {
+  threadPR: id => ipcRenderer.invoke('thread-pr', id),
+  settleThread: (id, settled) => ipcRenderer.invoke('settle-thread', id, settled),
+  summarizeThread: (id, provider, model) => ipcRenderer.invoke('summarize-thread', id, provider, model),
   setAppearance: theme => ipcRenderer.invoke('appearance', theme),
   getAppInfo: () => ipcRenderer.invoke('app-info'),
   pickAttachments: () => ipcRenderer.invoke('pick-attachments'),

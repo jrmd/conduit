@@ -3,7 +3,7 @@ export type Role = 'user' | 'assistant' | 'system';
 export interface Attachment { id: string; name: string; mime: string; size: number; preview?: string; }
 export interface UpdateStatus { state: 'idle' | 'checking' | 'downloading' | 'ready' | 'current' | 'error' | 'unsupported'; version?: string; percent?: number; message?: string; }
 export interface Message { attachments?: Attachment[]; id: string; role: Role; text: string; createdAt: number; }
-export interface Thread { id: string; projectId: string; title: string; provider: ProviderId; mode: 'read' | 'edit'; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
+export interface Thread { branch?: string; branches?: string[]; repository?: string; summary?: string; settled?: boolean; id: string; projectId: string; title: string; provider: ProviderId; mode: 'read' | 'edit'; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
 export interface Project { id: string; name: string; path: string; createdAt: number; }
 export interface ProviderInfo { id: ProviderId; name: string; available: boolean; path?: string; version?: string; error?: string; }
 export interface ModelOption { id: string; label: string; source: 'discovered' | 'alias'; efforts?: string[]; }
@@ -18,6 +18,9 @@ export type AppEvent = { type: 'activity'; threadId: string; activity: Activity 
 export interface CommitInput { projectId: string; files: string[]; message: string; }
 export interface PRInput { projectId: string; title: string; body: string; base?: string; draft: boolean; }
 export interface DesktopApi {
+  threadPR(threadId: string): Promise<{number: number; url: string; state: string; title: string} | null>;
+  settleThread(threadId: string, settled: boolean): Promise<void>;
+  summarizeThread(threadId: string, provider: ProviderId, model?: string): Promise<void>;
   setAppearance(theme: 'system' | 'light' | 'dark'): Promise<void>;
   getAppInfo(): Promise<{ version: string; platform: string }>;
   pickAttachments(): Promise<Attachment[]>;

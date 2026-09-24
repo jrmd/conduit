@@ -130,3 +130,21 @@ export async function createPullRequest(cwd: string, input: Omit<PRInput, 'proje
     return await command('gh', args, cwd);
   } finally { await fs.rm(bodyFile, { force: true }); }
 }
+
+/** Capture a local remote identity without requiring gh authentication at thread creation. */
+export async function threadGitContext(cwd: string) {
+  const branch = await git(cwd, 'branch', '--show-current').catch(() => '');
+  const remote = branch ? await git(cwd, 'config', '--get', `branch.${branch}.remote`).catch(() => 'origin') : 'origin';
+  const url = await git(cwd, 'remote', 'get-url', remote === '.' ? 'origin' : remote).catch(() => '');
+  const match = /^(?:https?:\/\/|ssh:\/\/git@|git@)([A-Za-z0-9.-]+)[:/]([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(url);
+  return { branch: branch || undefined, repository: match ? `https://${match[1]}/${match[2]}/${match[3]}` : undefined };
+}
+
+export async function findThreadPR(cwd: string, repository: string, branch: string) {
+  const raw = await command('gh', ['pr', 'list', '--repo', repository, '--head', branch, '--state', 'all', '--limit', '30', '--json', 'number,url,state,title,headRefName'], cwd);
+  const values = JSON.parse(raw);
+  if (!Array.isArray(values)) throw new Error('Unexpected GitHub response');
+  const matches = values.filter(value => value.headRefName === branch && Number.isInteger(value.number) && /^https:\/\//.test(value.url));
+  const pr = matches.find(value => value.state === 'OPEN') || matches[0];
+  return pr ? { number: pr.number, url: pr.url, state: pr.state, title: pr.title } : null;
+}

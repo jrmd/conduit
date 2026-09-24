@@ -124,3 +124,13 @@ Moved model, effort, and permission controls into the composer below the textare
 ## Vulp 0.3.5 — Changes header actions
 
 Commit, Push and Create PR now live in a compact Actions menu in the Changes header; the footer actions were removed. Existing dialogs and Git preconditions are preserved. `pnpm typecheck`, build and packaged `scripts/smoke-git-actions.mjs` pass. The isolated Git fixture verifies file-selection/upstream guards, Commit/PR dialog routing, arrow-key navigation, Escape focus return, outside dismissal, and light/dark layouts without executing a push or PR. Light-mode file and branch labels were also corrected during visual inspection.
+
+## Vulp 0.4.0 — thread organization and GitHub lookup
+
+- Removed the topbar delete action. Thread menus retain deletion and add Generate summary and Settle/Restore.
+- New threads persist their creation branch and sanitized remote repository URL; each subsequent run records its current branch separately. Legacy threads retain unknown historical branch information rather than inventing it.
+- Active-thread PR lookup uses `gh pr list --repo <captured repository> --head <creation branch> --state all`. It refreshes on opening the thread, window focus, each visible minute and explicit refresh. Errors remain visible; number/title/state and View in GitHub are shown when found. The current checkout does not choose the lookup branch.
+- Live authenticated read: `jrmd/vulp` main returned no PR. The same lookup implementation against `pingdotgg/t3code` branch `feat/nested-subagent-lineage` returned open PR #13438 on 2026-09-24. This was read-only; no PR was created for testing.
+- Summary provider/model is chosen in Settings and saved locally. Generate summary runs the installed CLI in a separate temporary directory/session, sends at most the last 40,000 transcript characters and saves at most 600 output characters. It does not alter the source thread session or messages. Timeout/cancellation and existing busy/deletion guards apply.
+- Search covers title, summary, recorded branches and message text, including settled threads. Settled conversations can be restored; sending into one returns it to Active.
+- `pnpm typecheck`, 35 core tests and Linux build pass. `smoke-thread-features.mjs` exercises real CLI subprocess replay for exact gh arguments despite another checked-out branch, PR discovery/linking, selected summary model, isolated cwd, persisted metadata, search, settlement and restore. Summary generation is replay-verified, not a new authenticated provider completion.

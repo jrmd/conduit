@@ -607,3 +607,38 @@ button.icon-button{line-height:1}
 [data-theme=light] .git-actions-menu button{color:#344d68}
 [data-theme=light] .git-actions-menu button:hover:not(:disabled),[data-theme=light] .git-actions-menu button:focus-visible{background:#e7eff7}
 [data-theme=light] .git-actions-menu small{color:#58738f}
+
+.thread-search{display:flex;align-items:center;gap:7px;margin:0 5px 10px;padding:7px 8px;border:1px solid #303640;border-radius:6px;color:#77869a}
+.thread-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#cbd5e3;font-size:11px}
+.thread-search button{display:grid;place-items:center;padding:0;border:0;background:transparent;color:inherit}
+.thread-sections{display:flex;gap:4px;margin:0 5px 10px}
+.thread-sections button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px;border:0;border-radius:4px;background:transparent;color:#828e9d;font-size:11px}
+.thread-sections button[aria-pressed=true]{background:#272e38;color:#d9e1ed}
+.sidebar-thread{position:relative}
+.sidebar-thread .thread-item{width:100%;padding:8px 25px 8px 9px;align-items:flex-start}
+.thread-item-text{min-width:0;flex:1;display:flex;flex-direction:column;gap:5px;text-align:left}
+.thread-item-text .thread-item-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread-branch{display:flex;align-items:center;gap:4px;font-size:10px;color:#8797aa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread-summary{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:10px;line-height:1.5;color:#8b99ac;font-weight:400}
+.thread-more{position:absolute;right:3px;top:5px;display:grid;place-items:center;width:22px;height:24px;border:0;border-radius:4px;background:transparent;color:#8495ab;opacity:0}
+.sidebar-thread:hover .thread-more,.sidebar-thread:focus-within .thread-more{opacity:1}
+.thread-more:hover{background:#344151;color:#e1e9f4}
+.sidebar-thread .thread-item time{display:none}
+.thread-pr{display:flex;align-items:center;gap:5px;color:#8598b1;font-size:11px}
+.thread-pr-link{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid #34485e;border-radius:5px;color:#a5d3c7;padding:6px 8px;font-size:11px}
+.thread-pr-link:hover{background:#1c3143}
+.summary-settings{margin:28px 0;padding-bottom:24px;border-bottom:1px solid #293340}
+.summary-settings label{display:flex;align-items:center;gap:16px;margin-top:12px;font-size:12px;color:#9cacc1}
+.summary-settings select{margin-left:auto;width:65%;min-height:34px;padding:6px 9px;border:1px solid #354356;border-radius:5px;background:#141e2b;color:#ccd9e9;font:inherit}
+[data-theme=light] .thread-search{border-color:#cbd5e2;color:#65788f}
+[data-theme=light] .thread-search input{color:#304963}
+[data-theme=light] .thread-sections button{color:#59718a}
+[data-theme=light] .thread-sections button[aria-pressed=true]{background:#dce6f0;color:#244761}
+[data-theme=light] :is(.thread-branch,.thread-summary,.thread-more){color:#647a92}
+[data-theme=light] .thread-more:hover{background:#d2dfec;color:#2e516c}
+[data-theme=light] .thread-pr-link{color:#246c62;border-color:#c5d8d5}
+[data-theme=light] .thread-pr-link:hover{background:#dfefea}
+[data-theme=light] .summary-settings{border-color:#d3dfea}
+[data-theme=light] .summary-settings label{color:#536d87}
+[data-theme=light] .summary-settings select{background:#fff;color:#344d68;border-color:#c9d5e2}
+@media(max-width:1000px){.thread-pr-link span:last-child{display:none}}
