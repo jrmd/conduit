@@ -94,3 +94,9 @@ GitHub release workflows build Linux AppImage and Windows NSIS plus updater mani
 Live image proof: `VULP_LIVE_IMAGE_CHECK=1 node --import tsx scripts/check-live-image.mts` sent one read-only prompt through the production Codex runner with the managed PNG attachment. The CLI replied `Fox`. No tools were requested. Claude and OpenCode image input remain protocol-tested only. GitHub Checks passed on the initial source push.
 
 GitHub release `v0.3.0` published successfully with Linux AppImage, Windows NSIS installer/blockmap, and both latest manifests. The production AppImage was launched in an isolated Electron profile by `scripts/smoke-updates.mjs`; its real private feed authenticated via gh and returned version 0.3.0 as current. A simulated older current-version value exercised a real GitHub asset download and checksum verification to the ready state. No self-replacement/restart was performed during that smoke. macOS was intentionally skipped pending signing credentials.
+
+## New-thread shader (0.3.1)
+
+Integrated the user-supplied @jrmd OpenShaders field/halftone shader with its original constants and dark-theme math. Vulp supplies its page background colour and caps decorative animation at 30 fps. The canvas is scoped to the new-thread state and releases programs, textures, framebuffer, observers, and animation callbacks on unmount. Reduced motion renders a still frame; hidden/offscreen rendering pauses; context loss falls back to the plain background.
+
+Typecheck/build and Electron replay smoke passed. The smoke verifies a linked WebGL2 program without GL errors, stable time under reduced motion, time advancing again after reduced motion is disabled, fallback after forced context loss, and removal of the canvas once a prompt is sent. Screenshots inspected at 1440x900 and 850x600.

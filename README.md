@@ -55,4 +55,4 @@ Activity retains the last 500 entries per thread and up to 20 KB of detail per e
 
 ## Credits
 
-Fox artwork supplied by the project owner. Provider marks come from the Simple Icons collection via icons0.dev (CC0; source URLs in `src/icons/README.md`). Brand trademarks belong to their respective owners.
+Fox artwork and the new-thread halftone shader supplied by the project owner (@jrmd / OpenShaders). The shader runs only on the new-thread page, respects reduced motion, pauses while hidden, and releases GPU resources when the conversation starts. Provider marks come from the Simple Icons collection via icons0.dev (CC0; source URLs in `src/icons/README.md`). Brand trademarks belong to their respective owners.
