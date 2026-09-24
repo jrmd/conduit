@@ -16,7 +16,7 @@ A desktop workspace for Codex, Claude Code, Cursor, and OpenCode. Projects and c
 
 Use the paperclip, drop files onto the composer, or paste images. Up to 10 attachments, 20 MB per file, 5 MB per image, and 50 MB total. Copies are stored in the local app data directory, independent of the original file. Images receive thumbnails in the draft and conversation.
 
-Codex uses `--image`, Claude uses image blocks over CLI stream-json stdin, and OpenCode uses `--file`. Cursor image input is not implemented and is rejected explicitly. Other documents are passed as local-file references for the agent to read; extraction depends on that CLI's tools and the selected model. Image understanding also requires a vision-capable model. Attachment adapters are covered by replay and unit tests, not authenticated vision tests on every provider.
+Codex uses `--image`, Claude uses image blocks over CLI stream-json stdin, and OpenCode uses `--file`. Cursor image input is not implemented and is rejected explicitly. Other documents are passed as local-file references for the agent to read; extraction depends on that CLI's tools and the selected model. Image understanding also requires a vision-capable model. Attachment adapters are covered by replay and unit tests. One live read-only Codex image prompt correctly identified the fox logo; authenticated Claude and OpenCode vision remain unverified.
 
 ## Install and update
 
