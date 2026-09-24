@@ -1,0 +1,94 @@
+{
+  "name": "vulp",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Local desktop workspace for CLI coding agents",
+  "author": "Vulp",
+  "desktopName": "vulp",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build:main": "node scripts/build-main.mjs",
+    "build": "vite build && npm run build:main",
+    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env J2CODE_DEV_URL=http://127.0.0.1:5173 electron .\"",
+    "test": "node --import tsx --test core/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "package:linux": "npm run build && electron-builder --linux AppImage --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg zip --publish never",
+    "package:win": "npm run build && electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "cross-spawn": "^7.0.6",
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/node": "^26.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
+    "tsx": "^4.19.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "dev.jrmd.vulp",
+    "productName": "Vulp",
+    "files": [
+      "dist/**/*",
+      "assets/icon.png",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development",
+      "icon": "assets/icon.png",
+      "syncDesktopName": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jrmd",
+        "repo": "vulp",
+        "private": true,
+        "releaseType": "release"
+      }
+    ],
+    "artifactName": "Vulp-${version}-${os}-${arch}.${ext}"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jrmd/vulp.git"
+  },
+  "packageManager": "pnpm@11.22.0"
+}

@@ -1,0 +1,58 @@
+# Vulp
+
+A desktop workspace for Codex, Claude Code, Cursor, and OpenCode. Projects and conversations live locally. Vulp discovers installed CLIs and runs them as subprocesses using their existing sign-in; it does not call model-provider APIs directly.
+
+## Work in one place
+
+- Project folders, persistent conversations, and CLI session resume.
+- Searchable project and model pickers with provider icons from icons0.dev.
+- Per-model reasoning effort from capabilities advertised by the local CLI.
+- Permissions selectable between turns for Codex and Claude. A running process keeps its current permissions. Provider selection locks after the first message.
+- Inline tools, public reasoning summaries, and delegated-agent activity when exposed by the CLI.
+- Copy response, native text context menus, and project/thread context actions.
+- Selected-file commits, branch push, and pull requests through Git and `gh`.
+
+## Attachments
+
+Use the paperclip, drop files onto the composer, or paste images. Up to 10 attachments, 20 MB per file, 5 MB per image, and 50 MB total. Copies are stored in the local app data directory, independent of the original file. Images receive thumbnails in the draft and conversation.
+
+Codex uses `--image`, Claude uses image blocks over CLI stream-json stdin, and OpenCode uses `--file`. Cursor image input is not implemented and is rejected explicitly. Other documents are passed as local-file references for the agent to read; extraction depends on that CLI's tools and the selected model. Image understanding also requires a vision-capable model. Attachment adapters are covered by replay and unit tests, not authenticated vision tests on every provider.
+
+## Install and update
+
+Download the appropriate build from [GitHub Releases](https://github.com/jrmd/vulp/releases). On Linux, make the AppImage executable and run it. The unpacked development binary cannot self-update.
+
+This repository is private. Sign in with `gh auth login` on the work machine using an account with access to `jrmd/vulp`. Vulp retrieves the credential from `gh` in its main process when checking for updates. No credential is bundled in a release, exposed to the renderer, or persisted by Vulp. GitHub access and local CLI access are separate.
+
+Installed builds check 15 seconds after startup and every four hours, download available stable releases, then show **Restart to update**. Updates never restart the app automatically or while an agent is running. A manual check is available in Agent settings. Failed checks can be retried; an unpacked build explains that the AppImage is required.
+
+## Development
+
+Requires Node.js 22+, pnpm 11.22.0, and at least one supported CLI on PATH. `gh` is used for pull requests and private release updates.
+
+```sh
+pnpm install
+pnpm dev
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm package:linux
+```
+
+`pnpm package:win` builds an NSIS installer; `pnpm package:mac` builds a DMG and ZIP. Linux is the locally tested platform. Windows release builds are produced by GitHub Actions. macOS releases require signing/notarization credentials.
+
+## Releases
+
+Push the source to `main`; checks run automatically. To publish a version, update `package.json`, commit it, then push a matching `vX.Y.Z` tag. The release workflow builds Linux and Windows, uploads binaries and updater manifests, and publishes a GitHub Release only after builds succeed. `workflow_dispatch` builds artifacts without publishing unless invoked on a version tag.
+
+For signed macOS releases, set repository variable `ENABLE_MAC_RELEASES=true` and secrets `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. These are not needed for Linux. Windows binaries are currently unsigned; managed enterprise installations may require a signing configuration. macOS auto-update requires a signed application.
+
+## Data and compatibility
+
+The Vulp rename preserves the legacy `j2code` user-data directory and internal IPC/environment names so existing conversations remain available. `J2CODE_DATA_DIR` isolates test data and disables update checks. Attachment copies are retained in that data directory; deleting a conversation does not currently prune copies.
+
+Activity retains the last 500 entries per thread and up to 20 KB of detail per entry. Codex CLI JSON is supplemented by public events in the exact current session and explicitly linked child sessions. Raw hidden reasoning and unrelated session contents are not read. Other providers are limited to events their CLIs emit. Stopping a run stops its CLI process group; independent child-agent steering is not implemented.
+
+## Credits
+
+Fox artwork supplied by the project owner. Provider marks come from the Simple Icons collection via icons0.dev (CC0; source URLs in `src/icons/README.md`). Brand trademarks belong to their respective owners.

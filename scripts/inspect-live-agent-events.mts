@@ -1,0 +1,15 @@
+import { spawn } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { buildProviderInvocation } from '../core/providers';
+const cwd=await mkdtemp(join(tmpdir(),'j2code-agent-wire-'));
+const invocation=buildProviderInvocation('codex',cwd,'Use exactly one subagent to calculate 7 times 13, without tools or file access. Wait for its answer. Do not perform any other work or read or write files.');
+const child=spawn(invocation.command,invocation.args,{cwd,stdio:['pipe','pipe','pipe'],detached:true});
+let buffer='';const frames:object[]=[];const shapes:object[]=[];
+child.stdout.on('data',chunk=>{buffer+=chunk.toString();let i;while((i=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,i);buffer=buffer.slice(i+1);try{const frame=JSON.parse(line);frames.push(frame);const item=frame.item;shapes.push({type:frame.type,keys:Object.keys(frame),...(item?{itemType:item.type,itemKeys:Object.keys(item),tool:item.tool,name:item.name,server:item.server}: {})});}catch{}}});
+child.stderr.on('data',()=>{});child.stdin.end(invocation.stdin);
+const timer=setTimeout(()=>{try{process.kill(-child.pid!,'SIGTERM')}catch{}},60000);
+await new Promise(resolve=>child.once('close',resolve));clearTimeout(timer);
+await writeFile(new URL('../artifacts/live-agent-wire-014.json',import.meta.url),JSON.stringify(frames,null,2));
+console.log(JSON.stringify(shapes,null,2));await rm(cwd,{recursive:true,force:true});

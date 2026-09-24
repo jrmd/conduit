@@ -1,0 +1,10 @@
+// Source: https://icons0.dev/r/simple-icons/opencode.json (Simple Icons, CC0)
+import type { SVGProps } from "react";
+
+export function SimpleIconsOpencode(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M22 24H2V0h20zM17 4.8H7v14.4h10z"/></svg>
+  );
+}
+
+export default SimpleIconsOpencode;
