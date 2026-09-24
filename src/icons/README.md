@@ -4,3 +4,5 @@ Provider marks downloaded from icons0.dev registry, Simple Icons collection (CC0
 - https://icons0.dev/r/simple-icons/claude.json
 - https://icons0.dev/r/simple-icons/cursor.json
 - https://icons0.dev/r/simple-icons/opencode.json
+
+- https://icons0.dev/r/simple-icons/githubcopilot.json

@@ -132,6 +132,14 @@ export async function createPullRequest(cwd: string, input: Omit<PRInput, 'proje
 }
 
 /** Capture a local remote identity without requiring gh authentication at thread creation. */
+// Read only HEAD; sidebar refreshes should not scan the working tree.
+export async function currentBranch(cwd: string): Promise<string | null> {
+  const branch = await git(cwd, 'symbolic-ref', '--quiet', '--short', 'HEAD').catch(() => '');
+  if (branch) return branch;
+  const commit = await git(cwd, 'rev-parse', '--short', 'HEAD').catch(() => '');
+  return commit ? `Detached · ${commit}` : null;
+}
+
 export async function threadGitContext(cwd: string) {
   const branch = await git(cwd, 'branch', '--show-current').catch(() => '');
   const remote = branch ? await git(cwd, 'config', '--get', `branch.${branch}.remote`).catch(() => 'origin') : 'origin';

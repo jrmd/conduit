@@ -1,16 +1,26 @@
 # Vulp
 
-A desktop workspace for Codex, Claude Code, Cursor, and OpenCode. Projects and conversations live locally. Vulp discovers installed CLIs and runs them as subprocesses using their existing sign-in; it does not call model-provider APIs directly.
+A desktop workspace for Codex, Claude Code, Cursor, OpenCode, and GitHub Copilot. Projects and conversations live locally. Vulp discovers installed CLIs and runs them as subprocesses using their existing sign-in; it does not call model-provider APIs directly.
 
 ## Work in one place
 
-- Project folders, persistent conversations, and CLI session resume.
+- Project folders, persistent conversations, CLI session resume, and per-chat [Git workspaces](docs/chat-workspaces.md).
 - Searchable project and model pickers with provider icons from icons0.dev.
 - Per-model reasoning effort from capabilities advertised by the local CLI.
-- Permissions selectable between turns for Codex and Claude. A running process keeps its current permissions. Provider selection locks after the first message.
+- Four [approval modes](docs/approval-modes.md), selectable between turns, with inline permission requests. A running process keeps its current permissions. Provider selection locks after the first message.
 - Inline tools, public reasoning summaries, and delegated-agent activity when exposed by the CLI.
 - Copy response, native text context menus, and project/thread context actions.
 - Selected-file commits, branch push, and pull requests through Git and `gh`.
+
+## GitHub Copilot CLI
+
+Install the standalone `copilot` CLI on PATH and run `copilot login` (or configure a Copilot BYOK provider). Refresh discovery in Agent settings, then choose GitHub Copilot in the model picker. Vulp launches `copilot --acp --stdio` using the CLI's existing environment and credentials. ACP is currently a public preview; use a recent CLI version.
+
+Responses, tool activity, permission prompts, image blocks, and session resume use ACP. Auto asks for permission when Copilot requests it; Auto accept edits approves edit requests only. Vulp resets Copilot's persisted `allow_all` setting to off when advertised and handles permission choices itself. Provider-level allowlists still apply. Models come from ACP session capabilities; if none are advertised, use CLI default or enter an exact model ID. Reasoning effort stays at the CLI default unless advertised support is available. Slash commands can be sent as messages; there is no Copilot command menu yet.
+
+Validation: protocol fixtures cover discovery, model selection, resume, approvals, and cancellation. Local Copilot 1.0.88 completed ACP initialization and session creation, but a live model prompt returned an expired/invalid-credentials authorization error. Authenticated responses and vision remain unverified.
+
+See [GitHub's ACP server reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server).
 
 ## Attachments
 

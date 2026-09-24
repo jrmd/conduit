@@ -1,3 +1,5 @@
+import { ProviderRpc } from './provider-rpc';
+import { runInteractiveProvider } from './interactive-provider';
 import { createClaudeTextStream } from './response-stream';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { execFile } from 'node:child_process';
@@ -11,7 +13,7 @@ import crossSpawn from 'cross-spawn';
 import { watchCodexActivity } from './codex-activity';
 import { prepareAttachments, type ResolvedAttachment } from './attachments';
 import { createActivityParser } from './activity';
-import type { ActivityUpdate, ModelCatalogue, ModelOption, ProviderId, ProviderInfo } from '../shared/api';
+import type { ActivityUpdate, ModelCatalogue, ModelOption, ProviderId, ProviderInfo, ThreadMode } from '../shared/api';
 
 export interface ProviderRunEvent {
   kind: 'text' | 'status' | 'error' | 'tool' | 'activity';
@@ -26,9 +28,12 @@ export interface RunProviderArgs {
   cwd: string;
   prompt: string;
   sessionId?: string;
-  mode?: 'read' | 'edit';
+  mode?: ThreadMode;
+  onApproval?: (title: string, detail: string) => Promise<boolean>;
   model?: string;
   effort?: string;
+  contextWindow?: number;
+  fastMode?: boolean;
   signal: AbortSignal;
   onEvent: (event: ProviderRunEvent) => void;
 }
@@ -37,7 +42,7 @@ export interface ProviderInvocation { command: string; args: string[]; stdin?: s
 
 const execFileAsync = promisify(execFile);
 const binaries: Record<ProviderId, string[]> = {
-  codex: ['codex'], claude: ['claude'], cursor: ['cursor-agent', 'agent'], opencode: ['opencode'],
+  codex: ['codex'], claude: ['claude'], cursor: ['cursor-agent', 'agent'], opencode: ['opencode'], copilot: ['copilot'],
 };
 
 /** Build argv separately from spawn so process invocation is testable and never uses a shell. */
@@ -57,6 +62,8 @@ export function buildProviderInvocation(provider: ProviderId, cwd: string, promp
   if (effort && provider === 'cursor') throw new Error('This CLI does not expose effort selection');
   const effortArgs = !effort ? [] : provider === 'codex' ? ['-c', `model_reasoning_effort="${effort}"`] : provider === 'opencode' ? ['--variant', effort] : ['--effort', effort];
   switch (provider) {
+    case 'copilot':
+      throw new Error('Copilot requires the interactive ACP transport');
     case 'codex':
       return sessionId
         ? { command: 'codex', args: ['exec', 'resume', '--json', '--skip-git-repo-check', ...modelArgs, ...effortArgs, '-c', `sandbox_mode="${mode === 'edit' ? 'workspace-write' : 'read-only'}"`, '-c', 'approval_policy="never"', sessionId, '-'], stdin: prompt }
@@ -286,6 +293,21 @@ async function captureModelList(executable: string, args: string[], timeoutMs: n
 }
 
 export async function discoverModels(provider: ProviderId): Promise<ModelCatalogue> {
+  if (provider === 'copilot') {
+    const executable = await findExecutable(provider);
+    if (!executable) return { provider, options: [], warning: 'Copilot CLI not found. Install copilot and sign in with copilot login.' };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const rpc = new ProviderRpc(executable, ['--acp', '--stdio'], homedir(), providerEnvironment(), controller.signal);
+    try {
+      await rpc.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'vulp', version: '0.5.0' } });
+      const session = await rpc.request('session/new', { cwd: homedir(), mcpServers: [] });
+      const options = parseCopilotModels(session);
+      return { provider, options, warning: options.length ? undefined : 'Copilot did not advertise models. Use CLI default or enter a model ID. Sign in with copilot login if needed.' };
+    } catch {
+      return { provider, options: [], warning: 'Could not query Copilot ACP. Update copilot and sign in with copilot login, then refresh discovery.' };
+    } finally { clearTimeout(timer); rpc.close(); }
+  }
   if (provider === 'codex') {
     try {
       const file = join(process.env.CODEX_HOME || join(homedir(), '.codex'), 'models_cache.json');
@@ -303,10 +325,11 @@ export async function discoverModels(provider: ProviderId): Promise<ModelCatalog
             if (!id) return [];
             const label = typeof row.display_name === 'string' ? row.display_name.replace(/[\r\n]/g, ' ').slice(0, 100) : id;
             const efforts = Array.isArray(row.supported_reasoning_levels) ? row.supported_reasoning_levels.map((level: any) => level.effort).filter((level: unknown): level is string => typeof level === 'string' && /^[a-z][a-z0-9_-]{0,39}$/.test(level)) : [];
-            return [{ id, label, source: 'discovered', ...(efforts.length ? { efforts } : {}) }];
+            const contextWindows = [...new Set([row.context_window, row.max_context_window].filter(value => Number.isSafeInteger(value) && value > 0))] as number[];
+            return [{ id, label, source: 'discovered', ...(efforts.length ? { efforts } : {}), ...(contextWindows.length > 1 ? { contextWindows } : {}), ...(row.service_tiers?.some((tier: any) => tier.id === 'priority') ? { supportsFastMode: true } : {}) }];
           } catch { return []; }
         });
-      return { provider, options, warning: 'Listed from the local Codex cache; account access is checked by the CLI when you run.' };
+      return { provider, options };
     } catch { return { provider, options: [], warning: 'Local Codex model cache unavailable. Enter a model ID manually.' }; }
   }
   if (provider === 'claude') {
@@ -337,7 +360,7 @@ export async function discoverModels(provider: ProviderId): Promise<ModelCatalog
 }
 
 function displayName(id: ProviderId): string {
-  return ({ codex: 'Codex', claude: 'Claude Code', cursor: 'Cursor', opencode: 'OpenCode' })[id];
+  return ({ codex: 'Codex', claude: 'Claude Code', cursor: 'Cursor', opencode: 'OpenCode', copilot: 'GitHub Copilot' })[id];
 }
 
 function killProcessTree(child: ChildProcess): void {
@@ -354,7 +377,12 @@ export async function runProvider(input: RunProviderArgs): Promise<{ sessionId?:
   if (input.signal.aborted) throw new DOMException('The operation was aborted', 'AbortError');
   const startedAt = Date.now();
   let codexActivity: ReturnType<typeof watchCodexActivity> | undefined;
-  const mode = input.mode ?? 'read';
+  if (input.provider === 'copilot' || input.onApproval || (input.mode && !['read','edit'].includes(input.mode))) {
+    const executable = await findExecutable(input.provider);
+    if (!executable) throw new Error(`${displayName(input.provider)} CLI not found`);
+    return runInteractiveProvider(input, executable, providerEnvironment());
+  }
+  const mode = input.mode === 'edit' ? 'edit' : 'read';
   const invocation = buildAttachmentInvocation(input.provider, input.cwd, input.prompt, input.sessionId, mode, input.model, input.effort, input.attachments || []);
   const executable = await findExecutable(input.provider);
   if (input.signal.aborted) throw new DOMException('The operation was aborted', 'AbortError');
@@ -526,7 +554,7 @@ export function parseClaudeModels(output: string): ModelOption[] {
         const id = normalizeModelId(row.value);
         if (!id) return [];
         const efforts = row.supportsEffort && Array.isArray(row.supportedEffortLevels) ? row.supportedEffortLevels.filter((value: unknown): value is string => typeof value === 'string' && /^[a-z][a-z0-9_-]{0,39}$/.test(value)) : [];
-        return [{ id, label: typeof row.displayName === 'string' ? row.displayName.replace(/[\r\n]/g,' ').slice(0,100) : id, source: 'discovered', ...(efforts.length ? { efforts } : {}) }];
+        return [{ id, label: typeof row.displayName === 'string' ? row.displayName.replace(/[\r\n]/g,' ').slice(0,100) : id, source: 'discovered', ...(efforts.length ? { efforts } : {}), ...(row.supportsFastMode === true ? { supportsFastMode: true } : {}) }];
       } catch { return []; }
     });
   } catch { /* Not a capabilities frame. */ }
@@ -544,4 +572,29 @@ export function buildAttachmentInvocation(provider: ProviderId, cwd: string, pro
     result.stdin = JSON.stringify({type:'user',session_id:sessionId || '',parent_tool_use_id:null,message:{role:'user',content:[...images.map(file=>({type:'image',source:{type:'base64',media_type:file.mime,data:file.data.toString('base64')}})),{type:'text',text}]}})+'\n';
   }
   return result;
+}
+
+export async function validateModelSettings(provider: ProviderId, model: string | undefined, settings: {contextWindow?: unknown; fastMode?: unknown}) {
+  const {contextWindow, fastMode} = settings;
+  if (contextWindow === undefined && fastMode === undefined) return {};
+  const option = (await discoverModels(provider)).options.find(option => option.id === model);
+  if (contextWindow !== undefined && (typeof contextWindow !== 'number' || !option?.contextWindows?.includes(contextWindow))) throw new Error('This context length is not advertised for the selected model');
+  if (fastMode !== undefined && (typeof fastMode !== 'boolean' || !option?.supportsFastMode)) throw new Error('Fast mode is not advertised for the selected model');
+  return {contextWindow: contextWindow as number | undefined, fastMode: fastMode as boolean | undefined};
+}
+
+/** Use ACP-advertised models rather than a hard-coded catalogue. */
+export function parseCopilotModels(session: any): ModelOption[] {
+  const config = session.configOptions?.find((option: any) => option.category === 'model' || option.id === 'model');
+  const rows = config?.options?.flatMap((option: any) => option.options || [option])
+    || session.models?.availableModels || [];
+  const seen = new Set<string>();
+  return rows.slice(0, 300).flatMap((row: any): ModelOption[] => {
+    try {
+      const id = normalizeModelId(row.value ?? row.modelId);
+      if (!id || seen.has(id)) return [];
+      seen.add(id);
+      return [{ id, label: typeof row.name === 'string' ? row.name.replace(/[\r\n]/g, ' ').slice(0, 100) : id, source: 'discovered' }];
+    } catch { return []; }
+  });
 }

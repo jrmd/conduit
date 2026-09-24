@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { FileCode2, Puzzle, Sparkles } from "lucide-react";
 import type { ComposerItem, ProviderId } from "../shared/api";
 
-export function useComposerAutocomplete({ value, projectId, provider, input, onChange, onChoose }: {
-  value: string; projectId?: string; provider: ProviderId; input: RefObject<HTMLTextAreaElement | null>;
+export function useComposerAutocomplete({ value, projectId, threadId, provider, input, onChange, onChoose }: {
+  value: string; projectId?: string; threadId?: string; provider: ProviderId; input: RefObject<HTMLTextAreaElement | null>;
   onChange(value: string): void; onChoose(item: ComposerItem): void;
 }) {
   const [caret, setCaret] = useState(0);
@@ -21,7 +21,7 @@ export function useComposerAutocomplete({ value, projectId, provider, input, onC
   const trigger = fileMatch ? "@" : match?.[1];
   const query = fileMatch ? fileMatch[1] : match?.[2] || "";
   const start = caret - query.length - 1;
-  const key = `${projectId}:${provider}:${caret}:${value}`;
+  const key = `${projectId}:${threadId}:${provider}:${caret}:${value}`;
   const open = !!projectId && !!trigger && dismissed !== key;
   const kind = trigger === "@" ? "file" : "capability";
   useEffect(() => {
@@ -30,12 +30,12 @@ export function useComposerAutocomplete({ value, projectId, provider, input, onC
     if (!open || !projectId) { setLoading(false); return; }
     setLoading(true);
     const timer = setTimeout(() => {
-      window.j2code.getComposerItems(projectId, provider, kind, query).then(result => {
+      window.j2code.getComposerItems(projectId, provider, kind, query, threadId).then(result => {
         if (current) { setItems(result.items); setWarning(result.warning || ""); }
       }).catch(error => { if (current) setWarning(String(error)); }).finally(() => { if (current) setLoading(false); });
     }, 120);
     return () => { current = false; clearTimeout(timer); };
-  }, [projectId, provider, kind, query, open]);
+  }, [projectId, threadId, provider, kind, query, open]);
   useEffect(() => { list.current?.querySelector(`[aria-selected="true"]`)?.scrollIntoView({ block: "nearest" }); }, [selected]);
   function choose(item: ComposerItem) {
     const next = value.slice(0, start) + item.token + " " + value.slice(caret);

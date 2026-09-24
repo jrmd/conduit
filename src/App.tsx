@@ -1,3 +1,12 @@
+import { ThreadPreview } from './ThreadPreview';
+import { ModelControls } from './ModelControls';
+import './model-controls.css';
+import { modelFamilies, familyForModel } from '../shared/model-options';
+import type { ModelSettings } from '../shared/api';
+import { WorkspacePicker } from './WorkspacePicker';
+import type { WorkspaceChoice } from '../shared/api';
+import { useProjectBranches } from './useProjectBranches';
+import { approvalMode, approvalModes } from '../shared/approval';
 import { useComposerAutocomplete } from './ComposerAutocomplete';
 import { ThreadPR } from './ThreadPR';
 import { SummarySettings, readSummaryChoice, type SummaryChoice } from './SummarySettings';
@@ -8,25 +17,26 @@ import { ProjectPicker } from './ProjectPicker';
 import { SimpleIconsOpenai } from './icons/openai';
 import { SimpleIconsClaude } from './icons/claude';
 import { SimpleIconsCursor } from './icons/cursor';
+import { SimpleIconsGithubcopilot } from './icons/githubcopilot';
 import { SimpleIconsOpencode } from './icons/opencode';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  MoreHorizontal, Archive, Copy, Paperclip, Download, Sparkles, Atom, Asterisk, MousePointer2, Zap, ArrowUp, Check, ChevronDown, ChevronRight, CircleAlert,
+  Pin, PinOff, Archive, Copy, Paperclip, Download, Sparkles, Atom, Asterisk, MousePointer2, Zap, ArrowUp, Check, ChevronDown, ChevronRight, CircleAlert,
   CircleCheck, Code2, File, FileCode2, FileDiff, Folder, FolderOpen,
   GitBranch, GitCommitHorizontal, GitPullRequest, LoaderCircle, Menu,
-  MessageSquare, Plus, RefreshCw, Search, Settings2, Square, Terminal, Trash2, X,
+  Plus, RefreshCw, Search, Settings2, Square, SquarePen, PanelLeftClose, PanelLeftOpen, FolderPlus, Star, Terminal, Trash2, X,
 } from 'lucide-react';
 import { ActivityFeed } from './ActivityFeed';
 import { MessageMarkdown } from './MessageMarkdown';
-import type { ComposerItem, Attachment, UpdateStatus, ChangedFile, GitStatus, ModelCatalogue, Project, ProviderId, Snapshot } from '../shared/api';
+import type { Thread, ComposerItem, Attachment, UpdateStatus, ChangedFile, GitStatus, ModelCatalogue, Project, ProviderId, Snapshot, ApprovalRequest, ApprovalMode } from '../shared/api';
 
 type Dialog = 'commit' | 'push' | 'pr' | 'delete' | 'removeProject' | null;
 type Toast = { text: string; kind: 'success' | 'error' } | null;
 
 const providerNames: Record<ProviderId, string> = {
-  codex: 'Codex', claude: 'Claude Code', cursor: 'Cursor', opencode: 'OpenCode',
+  codex: 'Codex', claude: 'Claude Code', cursor: 'Cursor', opencode: 'OpenCode', copilot: 'GitHub Copilot',
 };
-const providerIcons = { codex: SimpleIconsOpenai, claude: SimpleIconsClaude, cursor: SimpleIconsCursor, opencode: SimpleIconsOpencode };
+const providerIcons = { codex: SimpleIconsOpenai, claude: SimpleIconsClaude, cursor: SimpleIconsCursor, opencode: SimpleIconsOpencode, copilot: SimpleIconsGithubcopilot };
 const effortRanks = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
 
 const initialGit: GitStatus = { branch: '', files: [], ahead: 0, behind: 0, isRepository: false };
@@ -54,15 +64,23 @@ export default function App() {
   const { appearance, setAppearance, theme } = useAppearance();
   const [threadSearch, setThreadSearch] = useState('');
   const [showSettled, setShowSettled] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('vulp.sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('vulp.sidebar-collapsed', String(sidebarCollapsed)); } catch { /* Keep the preference for this session. */ }
+  }, [sidebarCollapsed]);
   const [summaryChoice, setSummaryChoice] = useState<SummaryChoice | null>(readSummaryChoice);
   const [summaryBusy, setSummaryBusy] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot>({ projects: [], threads: [], providers: [], disabledProviders: [] });
+  const projectBranches = useProjectBranches(snapshot.projects);
   const [attachmentDrafts,setAttachmentDrafts] = useState<Record<string,Attachment[]>>({});
   const [attaching,setAttaching] = useState(false);
   const [copiedId,setCopiedId] = useState<string|null>(null);
   const [updateStatus,setUpdateStatus] = useState<UpdateStatus>({state:'idle'});
   const [contextMenu, setContextMenu] = useState<{x:number;y:number;projectId:string;threadId?:string}|null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('appearance');
   const [appInfo, setAppInfo] = useState({ version: '', platform: '' });
   useEffect(() => { window.j2code.getAppInfo().then(setAppInfo).catch(console.error); }, []);
   const [loading, setLoading] = useState(true);
@@ -70,20 +88,46 @@ export default function App() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>('codex');
   const [selectedEffort, setSelectedEffort] = useState('');
+  const [selectedModelSettings, setSelectedModelSettings] = useState<ModelSettings>({});
+  const [hiddenModels, setHiddenModels] = useState<string[]>(() => { try { const saved = JSON.parse(localStorage.getItem('vulp.hidden-models') || '[]'); return Array.isArray(saved) ? saved.filter((item): item is string => typeof item === 'string') : []; } catch { return []; } });
+  function toggleModelVisibility(key: string) {
+    const next = hiddenModels.includes(key) ? hiddenModels.filter(item => item !== key) : [...hiddenModels, key];
+    setHiddenModels(next);
+    try { localStorage.setItem('vulp.hidden-models', JSON.stringify(next)); } catch { notify('Could not save model visibility; it will last for this session.', 'error'); }
+  }
   const [effortOpen, setEffortOpen] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<'read' | 'edit'>('edit');
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
+  const [answeringApproval, setAnsweringApproval] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<ApprovalMode>('supervised');
   const [selectedModels, setSelectedModels] = useState<Partial<Record<ProviderId, string>>>({});
   const [modelCatalogues, setModelCatalogues] = useState<Partial<Record<ProviderId, ModelCatalogue>>>({});
   const [modelOpen, setModelOpen] = useState(false);
-  const [modelFilter, setModelFilter] = useState<ProviderId | 'all'>('all');
+  const [modelFilter, setModelFilter] = useState<ProviderId | 'favourites'>('codex');
   const [modelQuery, setModelQuery] = useState('');
+  const [favouriteModels, setFavouriteModels] = useState<string[]>(() => {
+    try { const saved: unknown = JSON.parse(localStorage.getItem('vulp.favourite-models') || '[]'); return Array.isArray(saved) ? saved.filter((value): value is string => typeof value === 'string') : []; } catch { return []; }
+  });
+  const isFavouriteModel = (provider: ProviderId, model: string) => favouriteModels.includes(`${provider}:${model}`);
+  function toggleFavouriteModel(provider: ProviderId, model: string) {
+    const key = `${provider}:${model}`;
+    const next = favouriteModels.includes(key) ? favouriteModels.filter(item => item !== key) : [...favouriteModels, key];
+    setFavouriteModels(next);
+    try { localStorage.setItem('vulp.favourite-models', JSON.stringify(next)); } catch { notify('Could not save favourites; they will last for this session.', 'error'); }
+  }
+
   const [modelBusy, setModelBusy] = useState(false);
+  const [modelOptionsSaving, setModelOptionsSaving] = useState(false);
   const [providerOpen, setProviderOpen] = useState(false);
-  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+  const [projectsOpen, setProjectsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
+  const [reviewTab, setReviewTab] = useState<'files' | 'activity'>('files');
+  useEffect(() => { setReviewTab('files'); }, [activeProjectId, activeThreadId]);
   const [references, setReferences] = useState<Record<string, { provider: ProviderId; items: ComposerItem[] }>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [workspaceDrafts, setWorkspaceDrafts] = useState<Record<string, WorkspaceChoice>>({});
+  const workspaceChoice = workspaceDrafts[activeProjectId || ''] || { mode: 'local' as const };
   const [sending, setSending] = useState(false);
   const [git, setGit] = useState<GitStatus>(initialGit);
   const [gitLoading, setGitLoading] = useState(false);
@@ -106,6 +150,8 @@ export default function App() {
   const nearBottomRef = useRef(true);
   const gitRequestRef = useRef(0);
   const diffRequestRef = useRef(0);
+  const activeThreadRef = useRef<string | null>(null);
+  activeThreadRef.current = activeThreadId;
   const activeProjectRef = useRef<string | null>(null);
 
   const activeProject = useMemo(() => snapshot.projects.find(p => p.id === activeProjectId) || null, [snapshot.projects, activeProjectId]);
@@ -116,9 +162,12 @@ export default function App() {
   const ProviderIcon = providerIcons[activeProvider];
   const activeModel = activeThread ? activeThread.model || '' : selectedModels[activeProvider] || '';
   const modelCatalogue = modelCatalogues[activeProvider];
+  const activeFamily = familyForModel(modelFamilies(activeProvider, modelCatalogue?.options || []), activeModel);
+  const displayedEffort = activeProvider === 'cursor' ? activeFamily?.variants.find(item => item.id === activeModel)?.effort || '' : activeEffort;
+  const activeModelSettings = activeThread || selectedModelSettings;
   const effortChoices = modelCatalogue?.options.find(option => option.id === activeModel)?.efforts || [];
   const enabledProviders = snapshot.providers.filter(provider => !snapshot.disabledProviders.includes(provider.id));
-  const pickerProviders = enabledProviders.filter(provider => provider.available && (!providerLocked || provider.id === activeThread?.provider) && (modelFilter === 'all' || provider.id === modelFilter));
+  const pickerProviders = enabledProviders.filter(provider => provider.available && (!providerLocked || provider.id === activeThread?.provider) && (modelFilter === 'favourites' || provider.id === modelFilter));
   const providerEnabled = !snapshot.disabledProviders.includes(activeProvider);
   const draftKey = activeThreadId || `new:${activeProjectId || 'none'}`;
   const draft = drafts[draftKey] || '';
@@ -131,7 +180,7 @@ export default function App() {
   const setDraft = (value: string) => setDrafts(previous => ({ ...previous, [draftKey]: value }));
   const referenceDraft = references[draftKey];
   const selectedReferences = referenceDraft?.provider === activeProvider ? referenceDraft.items.filter(item => draft.includes(item.token)) : [];
-  const autocomplete = useComposerAutocomplete({ value: draft, projectId: activeProjectId || undefined, provider: activeProvider, input: inputRef, onChange: setDraft, onChoose: item => setReferences(previous => ({ ...previous, [draftKey]: { provider: activeProvider, items: [...selectedReferences.filter(existing => existing.id !== item.id), item] } })) });
+  const autocomplete = useComposerAutocomplete({ value: draft, projectId: activeProjectId || undefined, threadId: activeThreadId || undefined, provider: activeProvider, input: inputRef, onChange: setDraft, onChoose: item => setReferences(previous => ({ ...previous, [draftKey]: { provider: activeProvider, items: [...selectedReferences.filter(existing => existing.id !== item.id), item] } })) });
   const activeActivity = activeThreadId ? activityByThread[activeThreadId] || '' : '';
   const activeStream = activeThreadId ? streamByThread[activeThreadId] || '' : '';
   const providerInstalled = snapshot.providers.some(provider => provider.id === activeProvider && provider.available);
@@ -148,10 +197,10 @@ export default function App() {
   }, [activeProvider, providerInstalled, providerEnabled, modelCatalogues]);
 
   useEffect(() => {
-    if (!modelOpen) return;
+    if (!modelOpen && !(settingsOpen && settingsTab === 'providers')) return;
     let mounted = true;
     for (const provider of snapshot.providers) {
-      if (!provider.available || snapshot.disabledProviders.includes(provider.id) || modelCatalogues[provider.id]) continue;
+      if (!provider.available || modelCatalogues[provider.id]) continue;
       window.j2code.getModels(provider.id).then(catalogue => {
         if (mounted) setModelCatalogues(previous => ({ ...previous, [provider.id]: catalogue }));
       }).catch(error => {
@@ -159,7 +208,7 @@ export default function App() {
       });
     }
     return () => { mounted = false; };
-  }, [modelOpen, snapshot.providers, snapshot.disabledProviders]);
+  }, [modelOpen, settingsOpen, settingsTab, snapshot.providers, snapshot.disabledProviders]);
 
   useEffect(() => {
     if (activeThread || !snapshot.disabledProviders.includes(selectedProvider)) return;
@@ -176,7 +225,7 @@ export default function App() {
     const request = ++gitRequestRef.current;
     setGitLoading(true);
     try {
-      const result = await window.j2code.getGit(projectId);
+      const result = await window.j2code.getGit(projectId, activeThreadRef.current || undefined);
       if (request !== gitRequestRef.current || projectId !== activeProjectRef.current) return;
       setGit(result);
       setSelectedFiles(previous => previous.filter(path => result.files.some(file => file.path === path)));
@@ -188,7 +237,9 @@ export default function App() {
     let mounted = true;
     const off = window.j2code.onEvent(event => {
       if (!mounted) return;
+      if (event.type === 'approvals') setApprovals(event.approvals);
       if (event.type === 'snapshot') {
+        setApprovals(event.snapshot.approvals || []);
         setSnapshot(event.snapshot);
         setStreamByThread(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => event.snapshot.threads.some(thread => thread.id === id && thread.running))));
         setActivityByThread(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => event.snapshot.threads.some(thread => thread.id === id && thread.running))));
@@ -216,6 +267,7 @@ export default function App() {
     window.j2code.getSnapshot().then(data => {
       if (!mounted) return;
       setSnapshot(data);
+      setApprovals(data.approvals || []);
       const firstProject = data.projects[0];
       if (firstProject) {
         setActiveProjectId(firstProject.id);
@@ -241,7 +293,7 @@ export default function App() {
     if (activeProjectId) refreshGit(activeProjectId);
     setSelectedFile(null);
     setDiff('');
-  }, [activeProjectId, refreshGit]);
+  }, [activeProjectId, activeThreadId, refreshGit]);
 
   useEffect(() => {
     nearBottomRef.current = true;
@@ -273,19 +325,19 @@ export default function App() {
 
   useEffect(() => {
     function dismiss(event: PointerEvent) {
-      if (!(event.target instanceof Element) || !event.target.closest('.model-wrap, .provider-wrap, .effort-wrap')) {
-        setModelOpen(false); setProviderOpen(false); setEffortOpen(false);
+      if (!(event.target instanceof Element) || !event.target.closest('.model-wrap, .provider-wrap, .effort-wrap, .approval-mode-wrap')) {
+        setModelOpen(false); setProviderOpen(false); setEffortOpen(false); setApprovalOpen(false);
       }
     }
     function escape(event: KeyboardEvent) {
-      if (event.key === 'Escape') { setModelOpen(false); setProviderOpen(false); setEffortOpen(false); }
+      if (event.key === 'Escape') { setModelOpen(false); setProviderOpen(false); setEffortOpen(false); setApprovalOpen(false); }
     }
     document.addEventListener('pointerdown', dismiss);
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape); };
   }, []);
 
-  useEffect(() => { setModelOpen(false); setProviderOpen(false); setEffortOpen(false); }, [activeThreadId, activeProjectId]);
+  useEffect(() => { setModelOpen(false); setProviderOpen(false); setEffortOpen(false); setApprovalOpen(false); }, [activeThreadId, activeProjectId]);
 
   useEffect(() => {
     const onResize = () => { if (window.innerWidth <= 900) setChangesOpen(false); };
@@ -304,7 +356,6 @@ export default function App() {
         setSelectedFiles([]);
         setGit(initialGit);
         setDialog(null);
-        setExpandedProjects(previous => ({ ...previous, [project.id]: true }));
         setSidebarOpen(false);
       }
     } catch (error) { notify(String(error), 'error'); }
@@ -318,7 +369,9 @@ export default function App() {
     let threadId = activeThreadId;
     try {
       if (!threadId) {
-        const thread = await window.j2code.createThread(activeProjectId, selectedProvider, selectedProvider === 'codex' || selectedProvider === 'claude' ? selectedMode : 'edit', selectedModels[selectedProvider] || undefined, selectedEffort || undefined);
+        let thread = await window.j2code.createThread(activeProjectId, selectedProvider, selectedProvider === 'codex' || selectedProvider === 'claude' ? selectedMode : 'edit', selectedModels[selectedProvider] || undefined, selectedEffort || undefined, workspaceChoice);
+        if (selectedModelSettings.contextWindow !== undefined || selectedModelSettings.fastMode !== undefined) thread = await window.j2code.updateThreadConfig(thread.id, {provider: thread.provider, mode: thread.mode, model: thread.model, effort: thread.effort, ...selectedModelSettings});
+        setWorkspaceDrafts(previous => ({ ...previous, [activeProjectId]: { mode: 'local' } }));
         setSnapshot(previous => ({ ...previous, threads: [thread, ...previous.threads.filter(existing => existing.id !== thread.id)] }));
         setActiveThreadId(thread.id);
         threadId = thread.id;
@@ -356,7 +409,7 @@ export default function App() {
     setSelectedFile(file);
     setDiff('');
     setDiffLoading(true);
-    try { const result = await window.j2code.getDiff(projectId, file); if (request === diffRequestRef.current && projectId === activeProjectRef.current) setDiff(result); }
+    try { const result = await window.j2code.getDiff(projectId, file, activeThreadId || undefined); if (request === diffRequestRef.current && projectId === activeProjectRef.current) setDiff(result); }
     catch (error) { if (request === diffRequestRef.current) setDiff(String(error)); }
     finally { if (request === diffRequestRef.current) setDiffLoading(false); }
   }
@@ -385,13 +438,13 @@ export default function App() {
       if (!projectId) return;
       if (dialog === 'commit') {
         if (!commitMessage.trim() || selectedFiles.length === 0) return;
-        await window.j2code.commit({ projectId, files: selectedFiles, message: commitMessage.trim() });
+        await window.j2code.commit({ projectId, threadId: activeThreadId || undefined, files: selectedFiles, message: commitMessage.trim() });
         setCommitMessage(''); setSelectedFiles([]); notify('Changes committed');
       }
-      if (dialog === 'push') { if (!git.pushTarget) return; await window.j2code.push(projectId); notify('Changes pushed'); }
+      if (dialog === 'push') { if (!git.pushTarget) return; await window.j2code.push(projectId, activeThreadId || undefined); notify('Changes pushed'); }
       if (dialog === 'pr') {
         if (!git.pushTarget || git.ahead > 0) return;
-        const url = await window.j2code.createPR({ projectId, title: prTitle.trim(), body: prBody.trim(), draft: prDraft });
+        const url = await window.j2code.createPR({ projectId, threadId: activeThreadId || undefined, title: prTitle.trim(), body: prBody.trim(), draft: prDraft });
         notify('Pull request created');
         await window.j2code.openExternal(url);
       }
@@ -414,7 +467,7 @@ export default function App() {
     setSelectedFiles([]);
     setGit(initialGit);
     setDialog(null);
-    const thread = snapshot.threads.filter(t => t.projectId === project.id && (!!t.settled === showSettled || !!threadSearch.trim()) && [t.title,t.summary,t.branch,...(t.branches || []),...t.messages.map(m => m.text)].join(' ').toLowerCase().includes(threadSearch.trim().toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    const thread = snapshot.threads.filter(t => t.projectId === project.id && (!t.settled || !!threadSearch.trim()) && [t.title,t.summary,t.branch,...(t.branches || []),...t.messages.map(m => m.text)].join(' ').toLowerCase().includes(threadSearch.trim().toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt)[0];
     setActiveThreadId(thread?.id || null);
     setSidebarOpen(false);
   }
@@ -433,6 +486,7 @@ export default function App() {
         setSnapshot(previous => ({ ...previous, threads: previous.threads.map(thread => thread.id === updated.id ? updated : thread) }));
       } else {
         setSelectedEffort('');
+        setSelectedModelSettings({});
         setSelectedProvider(provider);
         setSelectedModels(previous => ({ ...previous, [provider]: value }));
       }
@@ -450,6 +504,13 @@ export default function App() {
     window.addEventListener('click', dismiss); window.addEventListener('keydown', key); window.addEventListener('resize', dismiss);
     return () => { window.removeEventListener('click', dismiss); window.removeEventListener('keydown', key); window.removeEventListener('resize', dismiss); };
   }, [contextMenu]);
+  useEffect(() => {
+    if (!approvalOpen) return;
+    const dismiss = (event: PointerEvent) => { if (!(event.target as Element).closest('.approval-mode-wrap')) setApprovalOpen(false); };
+    window.addEventListener('pointerdown', dismiss);
+    return () => window.removeEventListener('pointerdown', dismiss);
+  }, [approvalOpen]);
+  useEffect(() => { setApprovalOpen(false); }, [activeThreadId, activeProjectId]);
   const changedCount = git.files.length;
   const canSend = (!!draft.trim() || !!draftAttachments.length) && !attaching && !!activeProject && !!providerInstalled && providerEnabled && !modelBusy && !sending && (activeThread ? !activeThread.running : true);
 
@@ -467,60 +528,86 @@ export default function App() {
     try { await window.j2code.settleThread(id, !snapshot.threads.find(t => t.id === id)?.settled); }
     catch (error) { notify(String(error), 'error'); }
   }
-  return <div className={`app-shell platform-${appInfo.platform}`}>
+  async function pin(id: string) {
+    setContextMenu(null);
+    try { await window.j2code.pinThread(id, !snapshot.threads.find(t => t.id === id)?.pinned); }
+    catch (error) { notify(String(error), 'error'); }
+  }
+  const sidebarQuery = threadSearch.trim().toLowerCase();
+  const matchingThreads = snapshot.threads.filter(thread => {
+    const project = snapshot.projects.find(project => project.id === thread.projectId);
+    return project && [project.name, thread.title, thread.summary, thread.branch, ...(thread.branches || []), ...thread.messages.map(message => message.text)].join(' ').toLowerCase().includes(sidebarQuery);
+  }).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt - a.updatedAt);
+  const renderSessions = (threads: Thread[], empty: string) => threads.length ? threads.map(thread => {
+            const project = snapshot.projects.find(project => project.id === thread.projectId)!;
+            const ProviderIcon = providerIcons[thread.provider];
+            const needsApproval = approvals.some(request => request.threadId === thread.id);
+            const branch = thread.workspace?.mode === 'worktree' ? thread.branch : projectBranches[project.id];
+            const hue = [...project.name].reduce((value, letter) => (value * 31 + letter.charCodeAt(0)) % 360, 0);
+            return <ThreadPreview title={thread.title || 'New thread'} project={project.name} branch={branch} model={modelCatalogues[thread.provider]?.options.find(option => option.id === thread.model)?.label || thread.model || `${providerNames[thread.provider]} · Default`} icon={<ProviderIcon width={14} height={14}/>} className={`sidebar-thread session-card ${needsApproval || thread.running ? 'has-status' : ''} ${thread.settled ? 'settled-card' : ''}`} key={thread.id}>
+              <button className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} aria-current={thread.id === activeThreadId ? 'page' : undefined} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}>
+                {!thread.settled && <span className="session-meta"><span className="session-project-badge" style={{color:`hsl(${hue} 55% 58%)`,background:`hsl(${hue} 45% 40% / .16)`}}>{project.name.slice(0,2).toUpperCase()}</span><span className="session-project-name">{project.name}</span>{thread.pinned && <Pin size={11} className="session-pinned" aria-label="Pinned"/>}
+                  <span className={`session-status ${needsApproval ? 'needs-approval' : thread.running ? 'working' : ''}`}>{needsApproval ? <><CircleAlert size={12}/>Approval</> : thread.running ? <><LoaderCircle className="spin" size={12}/>Working</> : null}<time>{timeAgo(thread.updatedAt)}</time></span>
+                </span>}
+                <span className="thread-item-title" title={thread.title}>{thread.title || 'New thread'}</span>
+                {thread.settled ? <time className="settled-age" title={new Date(thread.updatedAt).toLocaleString()}>{timeAgo(thread.updatedAt)}</time> : <span className="session-details">{branch && <span className="session-branch" title={branch}><GitBranch size={11}/>{branch}</span>}<span className="session-provider" title={providerNames[thread.provider]}><ProviderIcon width={14} height={14}/></span></span>}
+              </button>
+              <div className="session-actions">
+                <button className="session-pin" aria-label={`${thread.pinned ? 'Unpin' : 'Pin'} ${thread.title}`} title={thread.pinned ? 'Unpin thread' : 'Pin thread'} aria-pressed={!!thread.pinned} onClick={() => pin(thread.id)}>{thread.pinned ? <PinOff size={13}/> : <Pin size={13}/>}</button>
+                <button className="session-settle" aria-label={`${thread.settled ? 'Restore' : 'Settle'} ${thread.title}`} disabled={!!thread.running} onClick={() => settle(thread.id)}>{thread.settled ? <RefreshCw size={13}/> : <Check size={13}/>}<span>{thread.settled ? 'Restore' : 'Settle'}</span></button>
+              </div>
+            </ThreadPreview>;
+          }) : <div className="sidebar-empty">{empty}</div>;
+  const reopenSidebar = sidebarCollapsed && <button className="icon-button sidebar-reopen" aria-label="Expand sidebar" title="Expand sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={17}/></button>;
+  return <div className={`app-shell quiet-focus platform-${appInfo.platform} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
     {contextMenu && <div className="workspace-context-menu" role="menu" aria-label="Workspace actions" style={{left:Math.min(contextMenu.x,window.innerWidth-210),top:Math.min(contextMenu.y,window.innerHeight-220)}}>
       <button autoFocus role="menuitem" onClick={() => { const project=snapshot.projects.find(p=>p.id===contextMenu.projectId);if(project){selectProject(project);setActiveThreadId(null);} }}><Plus size={14}/>New thread here</button>
-      {contextMenu.threadId && <><button role="menuitem" disabled={!!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => settle(contextMenu.threadId!)}><Archive size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.settled ? 'Restore thread' : 'Settle thread'}</button><button role="menuitem" disabled={summaryBusy === contextMenu.threadId || !!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => summarize(contextMenu.threadId!)}><Sparkles size={14}/>Regenerate title</button></>}
+      {contextMenu.threadId && <><button role="menuitem" onClick={() => pin(contextMenu.threadId!)}><Pin size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.pinned ? 'Unpin thread' : 'Pin thread'}</button><button role="menuitem" disabled={!!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => settle(contextMenu.threadId!)}><Archive size={14}/>{snapshot.threads.find(t => t.id === contextMenu.threadId)?.settled ? 'Restore thread' : 'Settle thread'}</button><button role="menuitem" disabled={summaryBusy === contextMenu.threadId || !!snapshot.threads.find(t => t.id === contextMenu.threadId)?.running} onClick={() => summarize(contextMenu.threadId!)}><Sparkles size={14}/>Regenerate title</button></>}
       {contextMenu.threadId ? <button role="menuitem" onClick={() => {setActiveProjectId(contextMenu.projectId);setActiveThreadId(contextMenu.threadId!);setDialog('delete');}}><Trash2 size={14}/>Delete thread…</button> : <button role="menuitem" onClick={() => {setProjectToRemove(snapshot.projects.find(p=>p.id===contextMenu.projectId)!);setDialog('removeProject');}}><X size={14}/>Remove project…</button>}
     </div>}
     <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <div className="sidebar-top">
-        <div className="brand" title="Vulp"><img className="vulp-brand-logo" src="./vulp-logo.jpg" alt="Vulp" /></div>
+        <div className="brand" title="Vulp"><img className="vulp-brand-logo" src="./vulp-logo.jpg" alt="" /><span>vulp</span></div>
+        <button className="icon-button sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={() => setSidebarCollapsed(true)}><PanelLeftClose size={17}/></button>
         <button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={17} /></button>
       </div>
-      <div className="sidebar-content">
-        <button className="new-thread-button" disabled={!activeProject} onClick={() => { setSettingsOpen(false); setActiveThreadId(null); requestAnimationFrame(() => inputRef.current?.focus()); }}><Plus size={16} />New thread<kbd>{appInfo.platform === 'darwin' ? '⌘ N' : 'Ctrl N'}</kbd></button>
-        <div className="section-heading projects-heading"><span>Projects</span><button className="icon-button" onClick={pickProject} title="Open project folder" aria-label="Open project folder"><Plus size={16} /></button></div>
-        <label className="thread-search"><Search size={14}/><input aria-label="Search threads" placeholder="Search threads…" value={threadSearch} onChange={e => setThreadSearch(e.target.value)}/>{threadSearch && <button aria-label="Clear thread search" onClick={() => setThreadSearch('')}><X size={12}/></button>}</label>
-        <div className="thread-sections"><button aria-pressed={!showSettled} onClick={() => setShowSettled(false)}>Active</button><button aria-pressed={showSettled} onClick={() => setShowSettled(true)}>Settled <span>{snapshot.threads.filter(t => t.settled).length || ''}</span></button></div>
-        <div className="project-tree">
-          {snapshot.projects.map(project => {
-            const threads = snapshot.threads.filter(t => t.projectId === project.id && (!!t.settled === showSettled || !!threadSearch.trim()) && [t.title,t.summary,t.branch,...(t.branches || []),...t.messages.map(m => m.text)].join(' ').toLowerCase().includes(threadSearch.trim().toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt);
-            const expanded = !!threadSearch || (expandedProjects[project.id] ?? true);
-            if (threadSearch.trim() && !threads.length) return null;
-            return <div className="project-group" key={project.id}>
-              <div className={`project-row ${activeProjectId === project.id ? 'active' : ''}`} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id}); }}>
-                <button className="project-disclosure" onClick={() => setExpandedProjects(previous => ({ ...previous, [project.id]: !expanded }))} title={expanded ? 'Collapse project' : 'Expand project'} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${project.name}`}><ChevronRight size={14} className={expanded ? 'rotate-down' : ''} /></button>
-                <button className="project-title" onClick={() => selectProject(project)} title={project.path}><Folder size={14} /><span>{project.name}</span></button>
-                <button className="project-row-action" onClick={() => { selectProject(project); setActiveThreadId(null); requestAnimationFrame(() => inputRef.current?.focus()); }} title={`New thread in ${project.name}`} aria-label={`New thread in ${project.name}`}><Plus size={14} /></button>
-                <button className="project-row-action remove" onClick={() => { setProjectToRemove(project); setDialog('removeProject'); }} title={`Remove ${project.name}`} aria-label={`Remove ${project.name}`}><X size={13} /></button>
-              </div>
-              {expanded && <div className="project-threads">
-                {threads.map(thread => <div className="sidebar-thread" key={thread.id}><button onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}><MessageSquare size={13} /><span className="thread-item-text"><span className="thread-item-title">{thread.title || 'New thread'}</span>{(thread.branch || thread.branches?.length) && <small className="thread-branch" title={`Created on ${thread.branch || 'unknown branch'} · Run on ${(thread.branches || []).join(', ') || 'not run yet'}`}><GitBranch size={10}/>{thread.branches?.at(-1) || thread.branch}{thread.settled ? ' · settled' : ''}</small>}</span>{thread.running ? <LoaderCircle className="spin" size={12} /> : <time>{timeAgo(thread.updatedAt)}</time>}</button><button className="thread-more" aria-label={`Actions for ${thread.title}`} onClick={event => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); setContextMenu({ x: box.left, y: box.bottom, projectId: project.id, threadId: thread.id }); }}><MoreHorizontal size={15}/></button></div>)}
-                {threads.length === 0 && <div className="sidebar-empty">{showSettled ? 'No settled threads' : 'No threads yet'}</div>}
-              </div>}
-            </div>;
-          })}
-          {snapshot.projects.length === 0 && <div className="sidebar-empty">Open a local folder to start.</div>}
-        </div>
+      <div className="sidebar-tools">
+        <label className="thread-search"><Search size={16}/><input aria-label="Search threads" placeholder="Search" value={threadSearch} onChange={e => setThreadSearch(e.target.value)}/>{threadSearch && <button aria-label="Clear thread search" onClick={() => setThreadSearch('')}><X size={12}/></button>}</label>
+        <button className="icon-button" aria-label="Show projects" title="Projects" aria-expanded={projectsOpen} onClick={() => setProjectsOpen(!projectsOpen)}><Folder size={16}/></button>
+        <button className="icon-button" onClick={pickProject} title="Open project folder" aria-label="Open project folder"><FolderPlus size={16}/></button>
+        <button className="icon-button" disabled={!activeProject} aria-label="New thread" title={appInfo.platform === 'darwin' ? 'New thread (⌘ N)' : 'New thread (Ctrl N)'} onClick={() => { setSettingsOpen(false); setActiveThreadId(null); setSidebarOpen(false); requestAnimationFrame(() => inputRef.current?.focus()); }}><SquarePen size={16}/></button>
       </div>
+      {projectsOpen && <div className="sidebar-projects" aria-label="Projects">
+        {snapshot.projects.map(project => <div className="project-row" key={project.id} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id}); }}>
+          <button className="project-title" onClick={() => selectProject(project)} title={project.path}><Folder size={14}/><span>{project.name}</span></button>
+          <button className="project-row-action" aria-label={`New thread in ${project.name}`} onClick={() => { selectProject(project); setActiveThreadId(null); setSettingsOpen(false); setSidebarOpen(false); }}><Plus size={14}/></button>
+          <button className="project-row-action" aria-label={`Remove ${project.name}`} onClick={() => { setProjectToRemove(project); setDialog('removeProject'); }}><X size={13}/></button>
+        </div>)}
+        {!snapshot.projects.length && <div className="sidebar-empty">Open a local folder to start.</div>}
+      </div>}
+      <div className="sidebar-content session-list">
+        {renderSessions(matchingThreads.filter(thread => (sidebarQuery && !showSettled) || !thread.settled), sidebarQuery ? 'No matching threads.' : snapshot.projects.length ? 'Your next idea starts a new thread.' : 'Open a local folder to start.')}
+      </div>
+      <button className="settled-toggle" aria-expanded={showSettled} aria-controls="settled-threads" onClick={() => setShowSettled(!showSettled)}><span>Settled <span className="settled-count">({snapshot.threads.filter(thread => thread.settled).length})</span></span><span className="settled-rule"/><ChevronDown size={13} className={showSettled ? 'settled-expanded' : ''}/></button>
+      {showSettled && <div className="settled-list" id="settled-threads" role="region" aria-label="Settled threads">
+        {renderSessions(matchingThreads.filter(thread => thread.settled), sidebarQuery ? 'No matching settled threads.' : 'No settled threads.')}
+      </div>}
+
       <div className="sidebar-footer"><span className="app-version" title="Installed version">v{appInfo.version || '…'}</span>{updateStatus.state==='ready' ? <button className="update-ready" title="Restart to update" aria-label="Restart to update" onClick={()=>window.j2code.installUpdate().catch(error=>notify(String(error),'error'))}><Download size={13}/></button> : null}<button className={`footer-settings ${settingsOpen ? 'active' : ''}`} title="Agent settings" aria-label="Agent settings" onClick={() => setSettingsOpen(true)}><Settings2 size={15} /><span>Settings</span></button></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)} />}
 
     <main className="main-area">
       {settingsOpen ? <>
-        <header className="topbar settings-topbar"><button className="ghost-button" onClick={() => setSettingsOpen(false)}><ChevronRight size={15} className="back-chevron"/>Back to chat</button><strong>Settings</strong></header>
-        <section className="settings-screen" aria-label="Settings"><div className="settings-content"><h1>Settings</h1><p className="settings-intro">Vulp <span>v{appInfo.version}</span></p><div className="appearance-settings"><h2>Appearance</h2><p>Choose a theme or follow your system.</p><div className="appearance-options" role="group" aria-label="Appearance">{(['system', 'light', 'dark'] as const).map(value => <button key={value} aria-pressed={appearance === value} onClick={() => setAppearance(value)}>{value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}{appearance === value && <Check size={14}/>}</button>)}</div></div><div className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div><SummarySettings providers={snapshot.providers.filter(p => p.available && !snapshot.disabledProviders.includes(p.id))} choice={summaryChoice} onChange={choice => { setSummaryChoice(choice); localStorage.setItem('vulp.summary-model', JSON.stringify(choice)); }}/><h2>Providers</h2><p>Choose the installed CLIs available in the model picker.</p><div className="agent-list">{(['codex','claude','cursor','opencode'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); const Icon = providerIcons[id]; return <div className="agent-row" key={id}><span className="agent-initial"><Icon width={21} height={21}/></span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button></div></section>
+        <header className="topbar settings-topbar">{reopenSidebar}<button className="ghost-button" onClick={() => setSettingsOpen(false)}><ChevronRight size={15} className="back-chevron"/>Back to chat</button><strong>Settings</strong></header>
+        <section className="settings-screen" aria-label="Settings"><div className="settings-content"><h1>Settings</h1><nav className="settings-nav" role="tablist" aria-label="Settings sections">{[["appearance", "Appearance"], ["providers", "Agents"], ["summaries", "Thread titles"], ["updates", "Updates"]].map(([id, label], index, tabs) => <button key={id} role="tab" id={`settings-tab-${id}`} aria-selected={settingsTab === id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab === id ? 0 : -1} onClick={() => setSettingsTab(id)} onKeyDown={event => { const offset = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : ['ArrowUp', 'ArrowLeft'].includes(event.key) ? -1 : 0; const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : offset ? (index + offset + tabs.length) % tabs.length : -1; if (next >= 0) { event.preventDefault(); setSettingsTab(tabs[next][0]); document.getElementById(`settings-tab-${tabs[next][0]}`)?.focus(); } }}>{label}</button>)}</nav><p className="settings-intro">Vulp <span>v{appInfo.version}</span></p><section className="settings-panel" role="tabpanel" id="settings-panel-appearance" aria-labelledby="settings-tab-appearance" hidden={settingsTab !== "appearance"} tabIndex={0}><div id="settings-appearance" className="appearance-settings"><h2>Appearance</h2><p>Choose a theme or follow your system.</p><div className="appearance-options" role="group" aria-label="Appearance">{(['system', 'light', 'dark'] as const).map(value => <button key={value} aria-pressed={appearance === value} onClick={() => setAppearance(value)}>{value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}{appearance === value && <Check size={14}/>}</button>)}</div></div></section><section className="settings-panel" role="tabpanel" id="settings-panel-updates" aria-labelledby="settings-tab-updates" hidden={settingsTab !== "updates"} tabIndex={0}><div id="settings-updates" className="update-settings"><div><strong>Vulp updates</strong><small>{updateStatus.state==='current'?`Version ${updateStatus.version} is current`:updateStatus.state==='downloading'?`Downloading ${updateStatus.version} · ${updateStatus.percent || 0}%`:updateStatus.state==='ready'?`Version ${updateStatus.version} is ready`:updateStatus.message || 'Checks GitHub automatically; restart when you are ready.'}</small></div><button className="ghost-button" disabled={['checking','downloading','unsupported'].includes(updateStatus.state)} onClick={async()=>{try{if(updateStatus.state==='ready')await window.j2code.installUpdate();else setUpdateStatus(await window.j2code.checkForUpdates())}catch(error){notify(String(error),'error')}}}>{updateStatus.state==='ready'?'Restart to update':updateStatus.state==='checking'?'Checking…':'Check for updates'}</button></div></section><section className="settings-panel" role="tabpanel" id="settings-panel-summaries" aria-labelledby="settings-tab-summaries" hidden={settingsTab !== "summaries"} tabIndex={0}><div id="settings-summaries"><SummarySettings providers={snapshot.providers.filter(p => p.available && !snapshot.disabledProviders.includes(p.id))} choice={summaryChoice} onChange={choice => { setSummaryChoice(choice); localStorage.setItem('vulp.summary-model', JSON.stringify(choice)); }}/></div></section><section className="settings-panel" role="tabpanel" id="settings-panel-providers" aria-labelledby="settings-tab-providers" hidden={settingsTab !== "providers"} tabIndex={0}><h2 id="settings-providers">Agents</h2><p>Choose the installed CLIs available in the model picker.</p><div className="agent-list">{(['codex','claude','cursor','opencode','copilot'] as ProviderId[]).map(id => { const provider = snapshot.providers.find(p => p.id === id); const Icon = providerIcons[id]; return <div className="agent-row" key={id}><span className="agent-initial"><Icon width={21} height={21}/></span><span><strong>{providerNames[id]}</strong><small>{provider?.available ? provider.version || provider.path || 'Installed · sign-in may be required' : provider?.error || 'Not installed'}</small></span><span className={`agent-state ${provider?.available ? 'installed' : ''}`}>{provider?.available ? 'Installed' : 'Missing'}</span><button className="provider-toggle" role="switch" aria-label={`Enable ${providerNames[id]}`} aria-checked={!snapshot.disabledProviders.includes(id)} disabled={busy} onClick={async () => { setBusy(true); try { await window.j2code.setProviderEnabled(id, snapshot.disabledProviders.includes(id)); setSnapshot(await window.j2code.getSnapshot()); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }}><span /></button></div>; })}</div><button className="ghost-button refresh-agents" onClick={async () => { setBusy(true); try { const providers = await window.j2code.discover(); setSnapshot(previous => ({ ...previous, providers })); notify('Agent discovery refreshed'); } catch (error) { notify(String(error), 'error'); } finally { setBusy(false); } }} disabled={busy}><RefreshCw size={14} className={busy ? 'spin' : ''} />Refresh discovery</button><div className="model-visibility"><h2>Model visibility</h2><p>Choose models to show in the selector. Existing threads keep their model.</p>{snapshot.providers.filter(provider => provider.available).map(provider => <details key={provider.id}><summary><ChevronRight size={14}/>{provider.name}</summary><div className="model-visibility-list">{!modelCatalogues[provider.id] && <p>Loading models…</p>}{[{id:'',label:'CLI default'}, ...modelFamilies(provider.id, modelCatalogues[provider.id]?.options || [])].map(option => <label key={option.id}>{option.label}<button type="button" className="provider-toggle" role="switch" aria-label={`Show ${provider.name} ${option.label}`} aria-checked={!hiddenModels.includes(`${provider.id}:${option.id}`)} onClick={() => toggleModelVisibility(`${provider.id}:${option.id}`)}><span/></button></label>)}</div></details>)}</div></section></div></section>
       </> : <>
 
       <header className="topbar">
-        <div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar"><Menu size={18} /></button>{!providerLocked ? <ProjectPicker projects={snapshot.projects} current={activeProject} onSelect={project=>{selectProject(project);setActiveThreadId(null)}} onOpen={pickProject}/> : <span className="breadcrumb-project">{activeProject?.name || 'Workspace'}</span>}<ChevronRight size={14} className="breadcrumb-separator" /><strong>{activeThread?.title || 'New thread'}</strong></div>
+        <div className="topbar-left">{reopenSidebar}<button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar"><Menu size={18} /></button>{activeThread && activeThread.messages.length > 0 && <>{!providerLocked ? <ProjectPicker projects={snapshot.projects} current={activeProject} onSelect={project=>{selectProject(project);setActiveThreadId(null)}} onOpen={pickProject}/> : <span className="breadcrumb-project">{activeProject?.name || 'Workspace'}</span>}<ChevronRight size={14} className="breadcrumb-separator" /><strong>{activeThread?.title || 'New thread'}</strong></>}</div>
         <div className="topbar-actions">
-          {activeProject && git.isRepository && <div className="branch-pill"><GitBranch size={14} /><span>{git.branch || 'unknown'}</span></div>}
-          
-          {activeThread && <ThreadPR key={activeThread.id} thread={activeThread}/>}
-          <button className={`icon-button changes-toggle ${changesOpen ? 'is-on' : ''}`} title="Toggle changes" aria-label="Toggle changes" aria-expanded={changesOpen} onClick={() => setChangesOpen(!changesOpen)}><FileDiff size={16} /><span>Changes</span>{changedCount > 0 && <span className="count-dot">{changedCount}</span>}</button>
+          {activeThread && activeThread.messages.length > 0 && <ThreadPR key={activeThread.id} thread={activeThread}/>}
+          {activeThread && activeThread.messages.length > 0 && <button className={`icon-button changes-toggle ${changesOpen ? 'is-on' : ''}`} title="Toggle changes" aria-label="Toggle changes" aria-expanded={changesOpen} onClick={() => setChangesOpen(!changesOpen)}><FileDiff size={16} /><span>Changes</span>{changedCount > 0 && <span className="count-dot">{changedCount}</span>}</button>}
         </div>
       </header>
 
@@ -533,70 +620,94 @@ export default function App() {
                 <div className={`message-avatar ${message.role === 'assistant' ? 'agent-avatar' : ''}`}>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : <Terminal size={15} />}</div>
                 <div className="message-body"><div className="message-heading"><strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : 'Agent stopped'}</strong><time>{timeAgo(message.createdAt)}</time></div><div className="message-text"><MessageMarkdown text={message.text}/></div>{message.attachments?.length ? <div className="message-attachments">{message.attachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview ? <img src={file.preview} alt={file.name}/> : <File size={16}/>}<span>{file.name}</span></span>)}</div> : null}{message.role==='assistant' && <button className="copy-response" aria-label="Copy response" onClick={async()=>{try{await window.j2code.copyText(message.text);setCopiedId(message.id);setTimeout(()=>setCopiedId(null),1800)}catch(error){notify(String(error),'error')}}}>{copiedId===message.id?<Check size={13}/>:<Copy size={13}/>}<span>{copiedId===message.id?'Copied':'Copy'}</span></button>}</div>
               </div>
-              {message.role === 'user' && <ActivityFeed items={(activeThread.activity || []).filter(item => item.createdAt >= message.createdAt && item.createdAt < (activeThread.messages.slice(index + 1).find(next => next.role === 'user')?.createdAt ?? Infinity))} running={activeThread.running && !activeThread.messages.slice(index + 1).some(next => next.role === 'user')} />}
+              {message.role === 'user' && <ActivityFeed waiting={approvals.some(request=>request.threadId===activeThread.id)} items={(activeThread.activity || []).filter(item => item.createdAt >= message.createdAt && item.createdAt < (activeThread.messages.slice(index + 1).find(next => next.role === 'user')?.createdAt ?? Infinity))} running={activeThread.running && !activeThread.messages.slice(index + 1).some(next => next.role === 'user')} />}
               </Fragment>)}
               {activeStream && <div className="message message-assistant streaming-message"><div className="message-avatar agent-avatar">{providerNames[activeThread.provider]}</div><div className="message-body"><div className="message-heading"><strong>{providerNames[activeThread.provider]}</strong><LoaderCircle className="spin" size={11} /></div><div className="message-text"><MessageMarkdown text={activeStream}/></div></div></div>}
 
             </div></div>
-            : <div className="empty-conversation"><JrmdShader theme={theme}/><img className="vulp-hero-logo" src="./vulp-logo.jpg" alt="Vulp fox" /><h1>New thread</h1><div className="starter-prompts">{[{title:'Explore this project',text:'Explain the architecture of this project and how its main parts fit together.',icon:Code2},{title:'Find a better way',text:'Review this project and suggest the most valuable improvements.',icon:Sparkles},{title:'Solve a problem',text:'Help me investigate a problem in this project: ',icon:Terminal}].map(({title,text,icon:Icon}) => <button key={title} onClick={() => { setDraft(text); inputRef.current?.focus(); }}><Icon size={18}/><span>{title}</span><ArrowUp size={14}/></button>)}</div><span className="hero-project">Working in {activeProject.name}</span></div>}
+            : <div className="empty-conversation"><JrmdShader theme={theme}/><div className="new-thread-heading"><div className="new-thread-question" role="heading" aria-level={1}><span>What should we build in</span><ProjectPicker inline projects={snapshot.projects} current={activeProject} onSelect={project => { selectProject(project); setActiveThreadId(null); }} onOpen={pickProject}/><span className="question-mark">?</span></div></div></div>}
 
           {activeProject && <div className="composer-zone">
             {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending || !!activeThread?.running} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
-              <div className="composer" onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
+              <div className="composer" data-model-options-saving={modelOptionsSaving} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
+
               {autocomplete.menu}
+              <div className="approval-requests">{approvals.filter(request=>request.threadId === activeThreadId).map(request=><section className="approval-request" key={request.id} aria-label="Approval required"><strong>{request.title}</strong><pre>{request.detail}</pre><div>{[false,true].map(allow=><button key={String(allow)} disabled={answeringApproval === request.id} onClick={async()=>{setAnsweringApproval(request.id);try{await window.j2code.respondApproval(request.id,request.threadId,allow);}catch(error){notify(String(error),'error');}finally{setAnsweringApproval(null);}}}>{allow?'Allow once':'Deny'}</button>)}</div></section>)}</div>
               <textarea {...autocomplete.aria} onSelect={autocomplete.updateCaret} onBlur={autocomplete.dismiss} onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask anything… @ files · / skills & plugins' : 'Install an agent CLI to start…'} value={draft} onChange={event => { setDraft(event.target.value); autocomplete.updateCaret(); }} onKeyDown={event => { if (autocomplete.onKeyDown(event)) return; if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
               <div className="composer-bottom">
                 <button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || !!activeThread?.running || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button>
                 <div className="model-wrap">
-                  <button className="model-select" data-testid="model-selector" aria-label="Select model" aria-expanded={modelOpen} onClick={() => { setModelOpen(!modelOpen); setProviderOpen(false); setEffortOpen(false); setModelQuery(''); setModelFilter(activeProvider); if (window.innerWidth <= 900) setChangesOpen(false); }} disabled={!!activeThread?.running || modelBusy || (providerLocked && !providerEnabled)}><ProviderIcon style={{width:16,height:16}} /><span className="model-current" title={activeModel || 'CLI default'}>{modelCatalogue?.options.find(option => option.id === activeModel)?.label || activeModel || `${providerNames[activeProvider]} · Default`}</span><ChevronDown size={13} /></button>
+                  <button className="model-select" data-testid="model-selector" aria-label="Select model" aria-expanded={modelOpen} onClick={() => { setModelOpen(!modelOpen); setProviderOpen(false); setEffortOpen(false); setModelQuery(''); setModelFilter(activeProvider); if (window.innerWidth <= 900) setChangesOpen(false); }} disabled={!!activeThread?.running || modelBusy || (providerLocked && !providerEnabled)}><ProviderIcon style={{width:16,height:16}} /><span className="model-current" title={activeModel || 'CLI default'}>{activeFamily?.label || activeModel || `${providerNames[activeProvider]} · Default`}</span><ChevronDown size={13} /></button>
                   {modelOpen && <div className="model-menu model-browser" role="dialog" aria-label="Choose a model">
-                    <div className="model-provider-filters" role="tablist" aria-label="Providers" aria-orientation="vertical">
-                      {enabledProviders.filter(provider => provider.available && (!providerLocked || provider.id === activeProvider)).map(provider => { const Icon = providerIcons[provider.id]; return <button role="tab" aria-selected={modelFilter === provider.id} aria-controls="model-tab-panel" id={`provider-tab-${provider.id}`} key={provider.id} title={provider.id === 'codex' ? 'OpenAI / Codex' : provider.name} aria-label={provider.name} onClick={() => setModelFilter(provider.id)}><Icon style={{width:19,height:19}} /></button>; })}
-                      <button title="Manage providers" aria-label="Manage providers" className="model-settings-icon" onClick={() => { setModelOpen(false); setSettingsOpen(true); }}><Settings2 size={16} /></button>
+                    <div className="model-search"><Search size={15} /><input aria-label="Search models or enter exact model ID" autoFocus value={modelQuery} onChange={event => setModelQuery(event.target.value)} placeholder="Find a model…" /></div>
+                    <div className="model-provider-filters" role="group" aria-label="Model filters">
+                      <button aria-pressed={modelFilter === 'favourites'} title="Favourites" aria-label="Favourites" onClick={() => setModelFilter('favourites')}><Star /></button>
+                      {enabledProviders.filter(provider => provider.available && (!providerLocked || provider.id === activeProvider)).map(provider => { const Icon = providerIcons[provider.id]; return <button aria-pressed={modelFilter === provider.id} key={provider.id} title={provider.name} aria-label={provider.name} onClick={() => setModelFilter(provider.id)}><Icon /></button>; })}
                     </div>
-                    <div className="model-tab-content" role="tabpanel" id="model-tab-panel" aria-labelledby={`provider-tab-${modelFilter}`}>
-                    <div className="model-search"><Search size={13} /><input aria-label="Search models or enter exact model ID" autoFocus value={modelQuery} onChange={event => setModelQuery(event.target.value)} placeholder="Find a model…" /></div>
                     <div className="model-options">
                       {pickerProviders.map(provider => {
                         const catalogue = modelCatalogues[provider.id];
-                        const options = (catalogue?.options || []).filter(option => `${provider.name} ${option.label} ${option.id}`.toLowerCase().includes(modelQuery.trim().toLowerCase()));
+                        const allOptions = [{id: '', label: 'CLI default', variants: [{id: ''}]}, ...modelFamilies(provider.id, catalogue?.options || [])];
+                        const options = allOptions.filter(option => !hiddenModels.includes(`${provider.id}:${option.id}`) && `${provider.name} ${option.label} ${option.id}`.toLowerCase().includes(modelQuery.trim().toLowerCase()) && (modelFilter !== 'favourites' || isFavouriteModel(provider.id, option.id)));
+                        const Icon = providerIcons[provider.id];
                         return <section className="model-provider-group" key={provider.id}>
-                          <h3>{provider.name}<span>{options.length} models</span></h3>
-                          {!modelQuery.trim() && <button onClick={() => chooseModel('', provider.id)} className={activeProvider === provider.id && !activeModel ? 'selected' : ''}><span><strong>CLI default</strong><small>Let {provider.name} choose</small></span>{activeProvider === provider.id && !activeModel && <Check size={15} />}</button>}
-                          {options.map(option => <button key={option.id} className={activeProvider === provider.id && activeModel === option.id ? 'selected' : ''} onClick={() => chooseModel(option.id, provider.id)}><span><strong>{option.label}</strong><small>{option.id}{option.source === 'alias' ? ' · alias' : ''}</small></span>{activeProvider === provider.id && activeModel === option.id && <Check size={15} />}</button>)}
-                          {modelQuery.trim() && !options.some(option => option.id === modelQuery.trim()) && <button className="manual-model" onClick={() => chooseModel(modelQuery, provider.id)}><span><strong>Use exact ID: {modelQuery.trim()}</strong><small>With {provider.name}</small></span><Plus size={15} /></button>}
-                          {catalogue?.warning && <div className="model-note">{catalogue.warning}</div>}
+                          {options.map(option => {
+                            const selected = activeProvider === provider.id && option.variants.some(variant => variant.id === activeModel);
+                            const starred = isFavouriteModel(provider.id, option.id);
+                            return <div className={`model-choice-row ${selected ? 'selected' : ''}`} key={option.id}>
+                              <button className="model-choice" title={`${provider.name} · ${option.id || 'CLI default'}`} disabled={modelBusy} onClick={() => chooseModel(option.id, provider.id)}><Icon /><span><strong>{option.label}</strong>{modelFilter === 'favourites' && <small>{provider.name}</small>}</span>{selected && <Check size={14} />}</button>
+                              <button className="model-favourite" title={`${starred ? 'Unfavourite' : 'Favourite'} ${option.label}`} aria-label={`${starred ? 'Unfavourite' : 'Favourite'} ${provider.name} ${option.label}`} aria-pressed={starred} onClick={() => toggleFavouriteModel(provider.id, option.id)}><Star size={13} fill={starred ? 'currentColor' : 'none'} /></button>
+                            </div>;
+                          })}
+                          {modelFilter !== 'favourites' && modelQuery.trim() && !allOptions.some(option => option.id === modelQuery.trim()) && <button className="manual-model" disabled={modelBusy} onClick={() => chooseModel(modelQuery, provider.id)}><span><strong>Use exact ID: {modelQuery.trim()}</strong><small>With {provider.name}</small></span><Plus size={15} /></button>}
                           {!catalogue && <div className="model-note">Loading models…</div>}
                         </section>;
                       })}
+                      {modelFilter === 'favourites' && !pickerProviders.some(provider => [{id:'',label:'CLI default'}, ...modelFamilies(provider.id, modelCatalogues[provider.id]?.options || [])].some(option => !hiddenModels.includes(`${provider.id}:${option.id}`) && isFavouriteModel(provider.id, option.id) && `${provider.name} ${option.label} ${option.id}`.toLowerCase().includes(modelQuery.trim().toLowerCase()))) && <div className="model-note">{modelQuery.trim() ? 'No matching favourites.' : 'Star models in a provider tab to keep them here.'}</div>}
                       {!pickerProviders.length && <div className="model-note">No enabled, installed providers. Enable a provider in Settings to choose its models.</div>}
-                    </div>
                     </div>
                   </div>}
                 </div>
                 <div className="effort-wrap">
-                  <button className={`effort-select effort-${activeEffort || 'auto'}`} aria-label="Reasoning effort" aria-expanded={effortOpen} title={effortChoices.length ? 'Reasoning effort' : 'This model does not advertise effort levels; using CLI default'} disabled={(!effortChoices.length && !activeEffort) || !!activeThread?.running || modelBusy || !providerEnabled} onClick={() => { setEffortOpen(!effortOpen); setModelOpen(false); setProviderOpen(false); }}><Zap size={14} /><span>{activeEffort || 'Auto'}</span><span className="effort-meter" aria-hidden="true">{[0,1,2,3,4,5].map(index => <i key={index} className={index < Math.max(0,effortRanks.indexOf(activeEffort) - 1) ? 'lit' : ''} />)}</span></button>
-                  {effortOpen && <div className="effort-menu"><small>Reasoning effort</small>{['', ...effortChoices].map(effort => <button key={effort} className={`effort-${effort || 'auto'}`} aria-pressed={activeEffort === effort} onClick={async () => { setModelBusy(true); try { if (activeThread) await window.j2code.updateThreadConfig(activeThread.id, { provider: activeProvider, mode: activeThread.mode, model: activeModel || undefined, effort: effort || undefined }); else setSelectedEffort(effort); setEffortOpen(false); requestAnimationFrame(() => inputRef.current?.focus()); } catch (error) { notify(String(error), 'error'); } finally { setModelBusy(false); } }}><Zap size={14} /><span>{effort || 'Auto'}</span>{activeEffort === effort && <Check size={13} />}</button>)}</div>}
+                  <button className={`effort-select effort-${activeEffort || 'auto'}`} aria-label="Reasoning effort" aria-expanded={effortOpen} title={effortChoices.length ? 'Reasoning effort' : 'This model does not advertise effort levels; using CLI default'} disabled={!!activeThread?.running || modelBusy || !providerEnabled} onClick={() => { setEffortOpen(!effortOpen); setModelOpen(false); setProviderOpen(false); }}><Zap size={14} /><span>{displayedEffort || 'Auto'}</span><span className="effort-meter" aria-hidden="true">{[0,1,2,3,4,5].map(index => <i key={index} className={index < Math.max(0,effortRanks.indexOf(activeEffort) - 1) ? 'lit' : ''} />)}</span></button>
+                  {effortOpen && <div className="effort-menu" role="dialog" aria-label="Model options"><ModelControls provider={activeProvider} options={modelCatalogue?.options || []} model={activeModel} effort={activeEffort} settings={activeModelSettings} saving={modelOptionsSaving} disabled={modelBusy || sending || !!activeThread?.running} onChange={async (model, effort, settings) => {
+                    setModelBusy(true);
+                    setModelOptionsSaving(true);
+                    try {
+                      if (activeThread) {
+                        const updated = await window.j2code.updateThreadConfig(activeThread.id, {provider: activeProvider, mode: activeThread.mode, model: model || undefined, effort: effort || undefined, contextWindow: settings.contextWindow, fastMode: settings.fastMode});
+                        setSnapshot(previous => ({...previous, threads: previous.threads.map(thread => thread.id === updated.id ? updated : thread)}));
+                      } else { setSelectedModels(previous => ({...previous, [activeProvider]: model})); setSelectedEffort(effort); setSelectedModelSettings(settings); }
+                    } catch(error) { notify(String(error), 'error'); } finally { setModelBusy(false); setModelOptionsSaving(false); }
+                  }}/></div>}
                 </div>
-                {(activeProvider === 'codex' || activeProvider === 'claude') && <button className="mode-select" disabled={!!activeThread?.running || sending || modelBusy} onClick={async () => { const mode = (activeThread?.mode || selectedMode) === 'edit' ? 'read' : 'edit'; if (activeThread) { try { await window.j2code.updateThreadConfig(activeThread.id, { provider: activeProvider, model: activeModel || undefined, effort: activeEffort || undefined, mode }); } catch (error) { notify(String(error), 'error'); } } else setSelectedMode(mode); }} title={activeThread?.running ? 'Stop the current run to change permissions' : 'Permissions for the next message'}>{activeThread?.mode === 'read' || (!activeThread && selectedMode === 'read') ? 'Read only' : 'Edit files'}<ChevronDown size={13} /></button>}
+                <div className="approval-mode-wrap">
+                  <button className="mode-select" aria-label="Approval mode" aria-expanded={approvalOpen} disabled={!!activeThread?.running || sending || modelBusy} onClick={() => { setApprovalOpen(!approvalOpen); setModelOpen(false); setEffortOpen(false); }}>{approvalModes.find(mode => mode.id === approvalMode(activeThread?.mode || selectedMode))?.label}<ChevronDown size={13}/></button>
+                  {approvalOpen && <div className="approval-mode-menu" role="dialog" aria-label="Choose approval mode">{approvalModes.map(mode => <button key={mode.id} aria-pressed={approvalMode(activeThread?.mode || selectedMode) === mode.id} onClick={async () => {
+                    setModelBusy(true);
+                    try { if(activeThread) { const updated = await window.j2code.updateThreadConfig(activeThread.id,{provider:activeProvider,model:activeModel || undefined,effort:activeEffort || undefined,contextWindow:activeModelSettings.contextWindow,fastMode:activeModelSettings.fastMode,mode:mode.id}); setSnapshot(previous=>({...previous,threads:previous.threads.map(thread=>thread.id===updated.id?updated:thread)})); } else setSelectedMode(mode.id); setApprovalOpen(false); } catch(error) { notify(String(error),'error'); } finally { setModelBusy(false); }
+                  }} disabled={modelBusy}><span><strong>{mode.label}</strong><small>{mode.description}</small></span>{approvalMode(activeThread?.mode || selectedMode) === mode.id && <Check size={14}/>}</button>)}{(activeProvider === 'cursor' || activeProvider === 'opencode' || activeProvider === 'copilot') && <p>Auto asks for approval with {providerNames[activeProvider]}.</p>}</div>}
+                </div>
                 
               
                 {activeThread?.running ? <button className="send-button stop-button" onClick={() => window.j2code.cancel(activeThread.id)} title="Stop generation" aria-label="Stop generation"><Square size={13} fill="currentColor" /></button> : <button className="send-button" onClick={send} disabled={!canSend} title="Send message" aria-label="Send message">{sending ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={17} />}</button>}
               </div>
+              <WorkspacePicker key={`${activeProject.id}:${activeThreadId || 'new'}`} projectId={activeProject.id} thread={activeThread} branch={git.branch} value={workspaceChoice} disabled={sending} onChange={value => setWorkspaceDrafts(previous => ({ ...previous, [activeProject.id]: value }))}/>
             </div>
             {!providerEnabled && <div className="composer-footnote">This provider is disabled. <button className="markdown-link" onClick={() => setSettingsOpen(true)}>Enable it in Settings</button> to send messages.</div>}
             {!providerInstalled && <div className="composer-footnote">No agent CLI found. Install one and refresh discovery in Settings.</div>}
           </div>}
         </section>
 
-        <aside className={`changes-panel ${changesOpen ? 'changes-visible' : ''}`}>
-          <div className="changes-header"><div><span className="panel-title">Changes</span>{changedCount > 0 && <span className="changes-count">{changedCount}</span>}</div><div className="changes-header-actions"><GitActions key={`${activeProjectId}-${changesOpen}`} repository={git.isRepository} selectedCount={selectedFiles.length} pushTarget={git.pushTarget} onAction={setDialog}/><button className="icon-button" title="Refresh changes" onClick={() => activeProjectId && refreshGit(activeProjectId)} disabled={!activeProjectId}><RefreshCw size={15} className={gitLoading ? 'spin' : ''} /></button><button className="icon-button changes-close" title="Close changes" onClick={() => setChangesOpen(false)}><X size={16} /></button></div></div>
-          <div className={`changes-scroll ${selectedFile ? 'reviewing-diff' : ''}`}>{!activeProject ? <div className="changes-empty"><Folder size={23} /><strong>No project open</strong><span>Open a folder to see its changes.</span></div> : !git.isRepository ? <div className="changes-empty"><GitBranch size={23} /><strong>No Git repository</strong><span>Git changes will appear here when this folder is a repository.</span></div> : <>
+        {activeThread && activeThread.messages.length > 0 && <aside aria-label="Review changes" className={`changes-panel ${changesOpen ? 'changes-visible' : ''}`}>
+          <div className="changes-header"><div><span className="panel-title">Changes</span>{changedCount > 0 && <span className="changes-count">{changedCount}</span>}</div><div className="changes-header-actions"><GitActions key={`${activeProjectId}-${changesOpen}`} repository={git.isRepository} selectedCount={selectedFiles.length} pushTarget={git.pushTarget} onAction={setDialog}/><button className="icon-button" title="Refresh changes" onClick={() => activeProjectId && refreshGit(activeProjectId)} disabled={!activeProjectId}><RefreshCw size={15} className={gitLoading ? 'spin' : ''} /></button><button className="icon-button changes-close" aria-label="Close changes" title="Close changes" onClick={() => setChangesOpen(false)}><X size={16} /></button></div></div>
+          <div className="review-tabs" role="group" aria-label="Review view"><button aria-pressed={reviewTab === 'files'} onClick={() => setReviewTab('files')}>Files <span>{changedCount}</span></button><button aria-pressed={reviewTab === 'activity'} onClick={() => setReviewTab('activity')}>Activity</button></div>
+          {reviewTab === 'activity' ? <div className="review-activity">{activeThread && ((activeThread.activity?.length || 0) > 0 || activeThread.running) ? <ActivityFeed key={activeThread.id} items={activeThread.activity || []} running={activeThread.running}/> : <p>No agent activity in this thread yet.</p>}</div> : <div className={`changes-scroll ${selectedFile ? 'reviewing-diff' : ''}`}>{!activeProject ? <div className="changes-empty"><Folder size={23} /><strong>No project open</strong><span>Open a folder to see its changes.</span></div> : !git.isRepository ? <div className="changes-empty"><GitBranch size={23} /><strong>No Git repository</strong><span>Git changes will appear here when this folder is a repository.</span></div> : <>
             <div className="repo-summary"><GitBranch size={15} /><strong>{git.branch}</strong><span>{git.ahead > 0 ? `↑ ${git.ahead}` : ''}{git.behind > 0 ? ` ↓ ${git.behind}` : ''}</span></div>
-            {changedCount === 0 ? <div className="changes-empty clean"><CircleCheck size={25} /><strong>All clear</strong><span>Your working tree is clean.</span></div> : <><div className="file-list-heading"><span>MODIFIED FILES</span><span>{changedCount}</span></div><div className="file-list">{git.files.map(file => <div key={file.path} className={`file-row ${selectedFile === file.path ? 'file-selected' : ''}`}><label className="file-check" title="Select for commit"><input type="checkbox" checked={selectedFiles.includes(file.path)} onChange={() => setSelectedFiles(previous => previous.includes(file.path) ? previous.filter(path => path !== file.path) : [...previous, file.path])} /><span><Check size={10} /></span></label><button className="file-open" onClick={() => chooseFile(file.path)}><FileCode2 size={16} /><span className="file-detail"><strong>{fileName(file.path)}</strong>{fileDir(file.path) && <small>{fileDir(file.path)}</small>}</span><span className={`file-status status-${fileBadge(file).toLowerCase()}`}>{fileBadge(file)}</span></button></div>)}</div></>}
+            {changedCount === 0 ? <div className="changes-empty clean"><CircleCheck size={25} /><strong>No changes</strong><span>Your working tree is clean.</span></div> : <><div className="file-list-heading"><span>Changed files</span><span>{changedCount}</span></div><div className="file-list">{git.files.map(file => <div key={file.path} className={`file-row ${selectedFile === file.path ? 'file-selected' : ''}`}><label className="file-check" title="Select for commit"><input type="checkbox" checked={selectedFiles.includes(file.path)} onChange={() => setSelectedFiles(previous => previous.includes(file.path) ? previous.filter(path => path !== file.path) : [...previous, file.path])} /><span><Check size={10} /></span></label><button className="file-open" onClick={() => chooseFile(file.path)}><FileCode2 size={16} /><span className="file-detail"><strong>{fileName(file.path)}</strong>{fileDir(file.path) && <small>{fileDir(file.path)}</small>}</span><span className={`file-status status-${fileBadge(file).toLowerCase()}`}>{fileBadge(file)}</span></button></div>)}</div></>}
             {selectedFile && <div className="diff-card"><div className="diff-heading"><FileDiff size={14} /><span title={selectedFile}>{fileName(selectedFile)}</span><button onClick={() => setSelectedFile(null)} aria-label="Close diff"><X size={13} /></button></div><div className="diff-content">{diffLoading ? <LoaderCircle className="spin" size={18} /> : diff ? diff.split('\n').map((line, index) => <div key={index} className={`diff-line ${line.startsWith('+') && !line.startsWith('+++') ? 'added' : line.startsWith('-') && !line.startsWith('---') ? 'removed' : line.startsWith('@@') ? 'hunk' : ''}`}>{line || ' '}</div>) : <span>No diff available for this file.</span>}</div></div>}
-          </>}</div>
-        </aside>
+          </>}</div>}
+        </aside>}
       </div>
     </> }</main>
 

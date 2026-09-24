@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { ActivityUpdate, Message, Project, ProviderId, Snapshot, Thread, ThreadConfig } from '../shared/api.js';
+import type { ActivityUpdate, Message, Project, ProviderId, Snapshot, Thread, ThreadConfig, ThreadMode, ThreadWorkspace } from '../shared/api.js';
 
 interface State { projects: Project[]; threads: Thread[]; disabledProviders: ProviderId[]; }
 
@@ -13,7 +13,7 @@ export class Store {
   async load() {
     try {
       const value = JSON.parse(await fs.readFile(this.file, 'utf8')) as State;
-      if (Array.isArray(value.projects) && Array.isArray(value.threads)) this.state = { ...value, disabledProviders: (value.disabledProviders || []).filter(id => ['codex', 'claude', 'cursor', 'opencode'].includes(id)) };
+      if (Array.isArray(value.projects) && Array.isArray(value.threads)) this.state = { ...value, disabledProviders: (value.disabledProviders || []).filter(id => ['codex', 'claude', 'cursor', 'opencode', 'copilot'].includes(id)) };
       for (const thread of this.state.threads) for (const item of thread.activity || []) if (item.status === 'running') item.status = 'interrupted';
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -47,10 +47,10 @@ export class Store {
     }
     return structuredClone(project);
   }
-  async createThread(projectId: string, provider: ProviderId, mode: 'read' | 'edit', model?: string, effort?: string) {
+  async createThread(projectId: string, provider: ProviderId, mode: ThreadMode, model?: string, effort?: string, workspace?: ThreadWorkspace) {
     this.getProject(projectId);
     const now = Date.now();
-    const thread: Thread = { id: randomUUID(), projectId, provider, mode, ...(model ? { model } : {}), ...(effort ? { effort } : {}), title: 'New thread', messages: [], createdAt: now, updatedAt: now };
+    const thread: Thread = { id: randomUUID(), projectId, provider, mode, workspace, ...(model ? { model } : {}), ...(effort ? { effort } : {}), title: 'New thread', messages: [], createdAt: now, updatedAt: now };
     this.state.threads.unshift(thread);
     await this.save();
     return structuredClone(thread);
@@ -99,7 +99,11 @@ export class Store {
     await this.save();
     return structuredClone(message);
   }
-  async updateThread(id: string, update: Partial<Pick<Thread, 'sessionId' | 'running' | 'model' | 'effort' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
+  async pinThread(id: string, pinned: boolean) {
+    this.getThread(id).pinned = pinned;
+    await this.save();
+  }
+  async updateThread(id: string, update: Partial<Pick<Thread, 'sessionId' | 'running' | 'model' | 'effort' | 'contextWindow' | 'fastMode' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
     const thread = this.getThread(id);
     Object.assign(thread, update);
     thread.updatedAt = Date.now();

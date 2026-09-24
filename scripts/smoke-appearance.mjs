@@ -30,7 +30,7 @@ try{
  await page.screenshot({path:path.join(root,'artifacts','vulp-open-project-light.png')});
  await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await shader(0);
  await page.screenshot({path:path.join(root,'artifacts','vulp-open-project-dark.png')});
- await page.getByRole('button',{name:'Agent settings',exact:true}).click();await aligned('Back to chat');await aligned('Refresh discovery');
+ await page.getByRole('button',{name:'Agent settings',exact:true}).click();await aligned('Back to chat');await page.getByRole('tab',{name:'Agents',exact:true}).click();await aligned('Refresh discovery');await page.getByRole('tab',{name:'Appearance',exact:true}).click();
  await expect(page.getByRole('button',{name:'System',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Light',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
  expect(await app.evaluate(({nativeTheme})=>nativeTheme.themeSource)).toBe('light');

@@ -347,7 +347,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .thread-item:hover time,.thread-item.active time{opacity:1}
 .thread-item.active{background:#292c32;color:#f2f3f5}
 .provider-select:disabled,.mode-select:disabled{opacity:1;cursor:default;color:#9299a5}
-.provider-select:disabled>svg,.mode-select:disabled>svg{display:none}
+.provider-select:disabled>svg{display:none}
 .model-select{border-color:#363b44;background:#252931}
 .model-select:hover{border-color:#65728a}
 .changes-toggle{width:auto;padding:0 10px;gap:7px;font-size:12px}

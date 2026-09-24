@@ -1,0 +1,38 @@
+import { _electron as electron } from 'playwright';
+import { expect } from 'playwright/test';
+import { mkdtemp, mkdir, writeFile, copyFile, chmod, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+delete process.env.ELECTRON_RUN_AS_NODE;
+const root = process.cwd(), temp = await mkdtemp(path.join(tmpdir(), 'vulp-copilot-ui-'));
+let app;
+try {
+  for (const dir of ['data','repo','bin']) await mkdir(path.join(temp,dir));
+  await copyFile('scripts/fixtures/approval-provider.mjs',path.join(temp,'bin/copilot'));
+  await chmod(path.join(temp,'bin/copilot'),0o755);
+  const now=Date.now();
+  await writeFile(path.join(temp,'data/state.json'),JSON.stringify({projects:[{id:'p',name:'Copilot project',path:path.join(temp,'repo'),createdAt:now}],threads:[{id:'t',projectId:'p',provider:'copilot',mode:'supervised',title:'Copilot conversation',messages:[],createdAt:now,updatedAt:now}]}));
+  app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:path.join(temp,'data'),PATH:`${path.join(temp,'bin')}:${process.env.PATH}`}});
+  const page=await app.firstWindow();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.setViewportSize({width:1440,height:900});
+  await page.getByTestId('model-selector').click();
+  await page.getByRole('button',{name:'GitHub Copilot',exact:true}).click();
+  await expect(page.getByRole('button',{name:'GitHub Copilot',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('button',{name:'CLI default',exact:true})).toBeVisible();
+  await page.screenshot({path:path.join(root,'artifacts/copilot-picker-desktop.png')});
+  await page.setViewportSize({width:850,height:600});
+  await page.screenshot({path:path.join(root,'artifacts/copilot-picker-compact.png')});
+  const box=await page.getByRole('dialog',{name:'Choose a model'}).boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(600);
+  await page.getByRole('button',{name:'CLI default',exact:true}).click();
+  const snapshot=await page.evaluate(async()=>{await window.j2code.setProviderEnabled('copilot',false);return window.j2code.getSnapshot();});
+  expect(snapshot.disabledProviders).toContain('copilot');
+  await page.evaluate(()=>window.j2code.setProviderEnabled('copilot',true));
+  await page.getByRole('button',{name:'Agent settings',exact:true}).click();
+  await page.getByRole('tab',{name:'Agents',exact:true}).click();
+  await expect(page.getByRole('switch',{name:'Enable GitHub Copilot',exact:true})).toHaveAttribute('aria-checked','true');
+  await page.getByRole('switch',{name:'Enable GitHub Copilot',exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(root,'artifacts/copilot-settings.png')});
+  expect(errors).toEqual([]);
+  console.log('PASS: Copilot picker, desktop/compact bounds, provider settings and IPC toggles. Fixture only; no model prompt sent.');
+} finally {if(app) await app.close();await rm(temp,{recursive:true,force:true});}

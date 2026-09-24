@@ -37,3 +37,16 @@ test("generated title is short and unadorned",()=>{
  assert(normalizeTitle("a".repeat(100)).length<=48);
  assert.throws(()=>normalizeTitle("\n "));
 });
+
+test("Copilot discovers GitHub project skills without leaking OpenCode skills",async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),"vulp-copilot-skills-"));
+ try {
+  for(const [folder,name] of [[".github/skills","copilot-fixture"],[".opencode/skills","opencode-only-fixture"]]){
+   const dir=path.join(root,folder,name);await mkdir(dir,{recursive:true});
+   await writeFile(path.join(dir,"SKILL.md"),`---\nname: ${name}\ndescription: Fixture\n---\nInstructions`);
+  }
+  const result=await capabilities(root,"copilot");
+  assert.equal(result.items.find(item=>item.name==="copilot-fixture")?.token,"/copilot-fixture");
+  assert(!result.items.some(item=>item.name==="opencode-only-fixture"));
+ }finally{await rm(root,{recursive:true,force:true});}
+});

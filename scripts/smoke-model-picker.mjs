@@ -63,7 +63,7 @@ try {
   if (catalogue.options.some(option => /fixture|smoke|test-model/i.test(option.id))) throw new Error('Fixture/test model leaked into the local CLI catalogue');
 
   let picker = page.getByTestId('model-selector');
-  await page.getByRole('button', { name: 'Thread A model persistence' }).click();
+  await page.locator('.thread-item').filter({ hasText: 'Thread A model persistence' }).click();
   await picker.click();
   await expect(page.getByRole('button', { name: 'CLI default', exact: false })).toBeVisible();
   await expect(page.getByLabel('Search models or enter exact model ID')).toBeVisible();
@@ -93,8 +93,8 @@ try {
   await expect.poll(async () => (await page.evaluate(() => window.j2code.getSnapshot())).threads.find(thread => thread.id === threadA)?.model).toBe(customModel);
 
   const threadB = 'model-fixture-two';
-  await page.getByRole('button', { name: 'Thread B independent model' }).click();
-  await expect.poll(async () => await picker.innerText()).toContain('CLI default');
+  await page.locator('.thread-item').filter({ hasText: 'Thread B independent model' }).click();
+  await expect.poll(async () => await picker.innerText()).toContain('Codex · Default');
   if (catalogue.options.length) {
     const other = catalogue.options.find(option => option.id !== customModel) ?? catalogue.options[0];
     await picker.click();
@@ -111,7 +111,7 @@ try {
   const restoredB = restored.threads.find(thread => thread.id === threadB);
   expect(restoredA?.model).toBe(customModel);
   if (catalogue.options.length) expect(restoredB?.model).toBe(catalogue.options.find(option => option.id !== customModel)?.id ?? catalogue.options[0].id);
-  await page.getByRole('button', { name: 'Thread A model persistence' }).click();
+  await page.locator('.thread-item').filter({ hasText: 'Thread A model persistence' }).click();
   await expect.poll(async () => await page.getByTestId('model-selector').innerText()).toContain(customModel);
 
   // Exercise one benign, authenticated local Codex turn and a same-session follow-up.

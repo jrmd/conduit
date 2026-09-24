@@ -1,3 +1,6 @@
+import { prepareWorkspace, workspaceInfo } from '../core/workspaces';
+import { Approvals } from '../core/approvals';
+import { isThreadMode } from '../shared/approval';
 import os from 'node:os';
 import { composerItems, resolveReferences } from '../core/composer-context';
 import { normalizeTitle } from '../core/thread-title';
@@ -10,9 +13,9 @@ import { promises as fs } from 'node:fs';
 import { AttachmentStore, attachmentLimit, imageMime, prepareAttachments, type ResolvedAttachment } from '../core/attachments';
 import { createUpdates } from './updates';
 import { Store } from '../core/store.js';
-import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus, threadGitContext, findThreadPR } from '../core/git.js';
-import { discoverModels, discoverProviders, normalizeModelId, validateEffort, runProvider } from '../core/providers.js';
-import type { AppEvent, CommitInput, PRInput, ProviderId, ProviderInfo, Snapshot, ThreadConfig } from '../shared/api.js';
+import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus, currentBranch, threadGitContext, findThreadPR } from '../core/git.js';
+import { discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
+import type { AppEvent, CommitInput, PRInput, ProviderId, ProviderInfo, Snapshot, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
 
 // Keep the existing workspace and Electron profile across the Vulp rename.
 if (!process.env.J2CODE_DATA_DIR && !app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'j2code'));
@@ -22,6 +25,7 @@ let win: BrowserWindow | null = null;
 let providers: ProviderInfo[] = [];
 const active = new Map<string, AbortController>();
 const starting = new Set<string>();
+const preparingWorkspaces = new Set<string>();
 const titling = new Map<string, AbortController>();
 const runs = new Set<Promise<void>>();
 const updates = createUpdates(() => active.size > 0 || starting.size > 0 || runs.size > 0);
@@ -35,13 +39,14 @@ async function importFile(name: string, bytes: Buffer) {
   const preview = img && !img.isEmpty() ? img.resize({width:96}).toDataURL() : undefined;
   return attachments.import(name,bytes,preview);
 }
-const providerIds = new Set<ProviderId>(['codex', 'claude', 'cursor', 'opencode']);
+const providerIds = new Set<ProviderId>(['codex', 'claude', 'cursor', 'opencode', 'copilot']);
 const assertId = (value: unknown) => { if (typeof value !== 'string' || value.length > 128) throw new Error('Invalid identifier'); return value; };
 const assertText = (value: unknown, max: number) => { if (typeof value !== 'string' || value.length > max) throw new Error('Invalid text'); return value; };
 const emit = (event: AppEvent) => { if (win && !win.isDestroyed()) win.webContents.send('j2code-event', event); };
+const approvals = new Approvals(requests => emit({type:'approvals',approvals:requests}));
 const snapshot = (): Snapshot => {
   const state = store.snapshot();
-  return { ...state, threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) })), providers };
+  return { ...state, approvals:approvals.list(), threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) })), providers };
 };
 const emitSnapshot = () => emit({ type: 'snapshot', snapshot: snapshot() });
 const rendererFile = () => path.join(__dirname, 'renderer', 'index.html');
@@ -56,15 +61,24 @@ function handle(name: string, fn: (...args: any[]) => Promise<unknown> | unknown
   ipcMain.handle(name, (event, ...args) => { guard(event); return fn(...args); });
 }
 
+function workspacePath(projectId: unknown, threadId?: unknown) {
+  const project = store.getProject(assertId(projectId));
+  if (!threadId) return project.path;
+  const thread = store.getThread(assertId(threadId));
+  if (thread.projectId !== project.id) throw new Error('Thread belongs to another project');
+  return thread.workspace?.path || project.path;
+}
+
 async function runThread(threadId: string, prompt: string, files: ResolvedAttachment[] = [], references = '') {
   const thread = store.getThread(threadId);
-  const project = store.getProject(thread.projectId);
+  const cwd = workspacePath(thread.projectId, threadId);
   const chosenModel = thread.model;
   const chosenEffort = await validateEffort(thread.provider, chosenModel, thread.effort);
+  const modelSettings = await validateModelSettings(thread.provider, chosenModel, thread);
   const runId = randomUUID();
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
-  const context = await threadGitContext(project.path);
+  const context = await threadGitContext(cwd);
   await store.updateThread(threadId, { settled: false, branches: [...(thread.branches || []).filter(branch => branch !== context.branch), ...(context.branch ? [context.branch] : [])] });
   await store.appendMessage(threadId, 'user', prompt, files.map(({path,data,...meta})=>meta));
   active.set(threadId, controller);
@@ -80,7 +94,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
   };
   const task = (async () => {
     try {
-      const result = await runProvider({ provider: thread.provider, cwd: project.path, prompt: prompt + references, attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'read', model: chosenModel, effort: chosenEffort, signal: controller.signal, onEvent: event => {
+      const result = await runProvider({ provider: thread.provider, cwd, prompt: prompt + references, attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'supervised', onApproval: (title, detail) => approvals.ask(threadId, title, detail, controller.signal), model: chosenModel, effort: chosenEffort, ...modelSettings, signal: controller.signal, onEvent: event => {
         if (event.kind === 'activity' && event.activity) {
           const activity = store.recordActivity(threadId, runId, event.activity);
           emit({ type: 'activity', threadId, activity });
@@ -104,7 +118,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
     } finally {
       if (flushTimer) clearTimeout(flushTimer);
       try { await store.finishActivity(threadId, runId, controller.signal.aborted); await sessionWrite; }
-      finally { active.delete(threadId); emitSnapshot(); }
+      finally { approvals.clear(threadId); active.delete(threadId); emitSnapshot(); }
     }
   })().catch(error => emit({ type: 'provider', threadId, kind: 'error', text: error instanceof Error ? error.message : 'Unable to save provider result' }));
   runs.add(task);
@@ -182,35 +196,51 @@ function registerIpc() {
     await store.removeProject(id);
     emitSnapshot();
   });
-  handle('create-thread', async (projectId: unknown, provider: unknown, mode: unknown, model: unknown, effort: unknown) => {
+  handle('respond-approval', (id: unknown, threadId: unknown, allow: unknown) => {
+    if (typeof allow !== 'boolean') throw new Error('Invalid approval decision');
+    approvals.respond(assertId(id), assertId(threadId), allow);
+  });
+  handle('create-thread', async (projectId: unknown, provider: unknown, mode: unknown, model: unknown, effort: unknown, choice?: WorkspaceChoice) => {
     if (!providerIds.has(provider as ProviderId)) throw new Error('Unknown provider');
     if (store.snapshot().disabledProviders.includes(provider as ProviderId)) throw new Error('Enable this provider in Settings first');
-    if (mode !== 'read' && mode !== 'edit') throw new Error('Choose a thread mode');
+    if (!isThreadMode(mode)) throw new Error('Choose a thread mode');
     if (!providers.find(item => item.id === provider)?.available) throw new Error('Provider CLI is unavailable');
     const selectedModel = normalizeModelId(model);
     const selectedEffort = await validateEffort(provider as ProviderId, selectedModel, effort);
-    const thread = await store.createThread(assertId(projectId), provider as ProviderId, mode, selectedModel, selectedEffort);
-    const context = await threadGitContext(store.getProject(thread.projectId).path);
-    const saved = await store.updateThread(thread.id, context); emitSnapshot(); return saved;
+    const id = assertId(projectId);
+    if (preparingWorkspaces.size || (choice?.mode === 'local' && (choice.branch || choice.newBranch) && (active.size || starting.size))) throw new Error('Wait for checkout activity to finish before creating a workspace');
+    preparingWorkspaces.add(id);
+    try {
+      const workspace = await prepareWorkspace(store.getProject(id).path, choice, path.join(path.dirname(dataFile), 'worktrees'));
+      const thread = await store.createThread(id, provider as ProviderId, mode, selectedModel, selectedEffort, workspace);
+      const context = await threadGitContext(workspace.path);
+      const saved = await store.updateThread(thread.id, context); emitSnapshot(); return saved;
+    } finally { preparingWorkspaces.delete(id); }
   });
   handle('configure-thread', async (threadId: unknown, value: ThreadConfig) => {
     const id = assertId(threadId);
-    if (!value || !providerIds.has(value.provider) || !['read', 'edit'].includes(value.mode)) throw new Error('Invalid thread configuration');
+    if (!value || !providerIds.has(value.provider) || !isThreadMode(value.mode)) throw new Error('Invalid thread configuration');
     if (store.snapshot().disabledProviders.includes(value.provider)) throw new Error('Enable this provider in Settings first');
     if (!providers.find(provider => provider.id === value.provider)?.available) throw new Error('Provider CLI is unavailable');
     const model = normalizeModelId(value.model);
     const effort = await validateEffort(value.provider, model, value.effort);
+    const modelSettings = await validateModelSettings(value.provider, model, value);
     if (active.has(id) || starting.has(id)) throw new Error('Wait for this run to finish');
-    const thread = await store.configureThread(id, { provider: value.provider, mode: value.mode, model, effort });
+    const thread = await store.configureThread(id, { provider: value.provider, mode: value.mode, model, effort, contextWindow: modelSettings.contextWindow, fastMode: modelSettings.fastMode });
     emitSnapshot();
     return thread;
   });
   handle('update-thread-model', async (threadId: unknown, model: unknown) => {
     const id = assertId(threadId);
     if (active.has(id) || starting.has(id)) throw new Error('Wait for this run to finish before changing its model');
-    const thread = await store.updateThread(id, { model: normalizeModelId(model), effort: undefined });
+    const thread = await store.updateThread(id, { model: normalizeModelId(model), effort: undefined, contextWindow: undefined, fastMode: undefined });
     emitSnapshot();
     return thread;
+  });
+  handle('pin-thread', async (threadId: unknown, pinned: unknown) => {
+    const id = assertId(threadId);
+    if (typeof pinned !== 'boolean') throw new Error('Invalid pinned state');
+    await store.pinThread(id, pinned); emitSnapshot();
   });
   handle('settle-thread', async (threadId: unknown, settled: unknown) => {
     const id = assertId(threadId);
@@ -221,12 +251,12 @@ function registerIpc() {
   handle('thread-pr', async (threadId: unknown) => {
     const thread = store.getThread(assertId(threadId));
     if (!thread.branch || !thread.repository) return null;
-    return findThreadPR(store.getProject(thread.projectId).path, thread.repository, thread.branch);
+    return findThreadPR(workspacePath(thread.projectId, thread.id), thread.repository, thread.branch);
   });
-  handle('composer-items', async (projectId: unknown, provider: unknown, kind: unknown, query: unknown) => {
+  handle('composer-items', async (projectId: unknown, provider: unknown, kind: unknown, query: unknown, threadId?: unknown) => {
     if (!providerIds.has(provider as ProviderId) || store.snapshot().disabledProviders.includes(provider as ProviderId)) throw new Error('Choose an enabled provider');
     if (kind !== 'file' && kind !== 'capability') throw new Error('Unknown reference kind');
-    return composerItems(store.getProject(assertId(projectId)).path, provider as ProviderId, kind, assertText(query, 1000));
+    return composerItems(workspacePath(projectId, threadId), provider as ProviderId, kind, assertText(query, 1000));
   });
   handle('summarize-thread', (threadId: unknown, provider: unknown, model: unknown) => generateTitle(assertId(threadId), provider as ProviderId, normalizeModelId(model)));
   handle('delete-thread', async (threadId: unknown) => {
@@ -239,13 +269,14 @@ function registerIpc() {
     if (!value) throw new Error('Enter a message');
     if (store.snapshot().disabledProviders.includes(store.getThread(id).provider)) throw new Error('Enable this provider in Settings first');
     if (active.has(id) || starting.has(id)) throw new Error('This thread is already running');
+    if (preparingWorkspaces.size) throw new Error('Wait for workspace setup to finish');
     starting.add(id);
     try {
       const thread = store.getThread(id);
       const first = !thread.messages.some(message => message.role === 'user');
       const refs = options?.references || [];
       if (!Array.isArray(refs) || refs.length > 30 || refs.some(ref => typeof ref !== 'string' || ref.length > 4000)) throw new Error('Invalid references');
-      const context = await resolveReferences(store.getProject(thread.projectId).path, thread.provider, refs, value);
+      const context = await resolveReferences(workspacePath(thread.projectId, id), thread.provider, refs, value);
       const files = await attachments.resolve(ids); prepareAttachments(thread.provider,value,files);
       await runThread(id, value, files, context);
       if (first) void generateTitle(id, options?.title?.provider || thread.provider, options?.title?.model ?? thread.model).catch(error => {
@@ -255,17 +286,19 @@ function registerIpc() {
     finally { starting.delete(id); }
   });
   handle('cancel', async (threadId: unknown) => { active.get(assertId(threadId))?.abort(); });
-  handle('git-status', async (projectId: unknown) => gitStatus(store.getProject(assertId(projectId)).path));
-  handle('git-diff', async (projectId: unknown, file: unknown) => gitDiff(store.getProject(assertId(projectId)).path, assertText(file, 4000)));
+  handle('workspace-info', async (projectId: unknown) => workspaceInfo(store.getProject(assertId(projectId)).path));
+  handle('project-branch', async (projectId: unknown) => currentBranch(store.getProject(assertId(projectId)).path));
+  handle('git-status', async (projectId: unknown, threadId?: unknown) => gitStatus(workspacePath(projectId, threadId)));
+  handle('git-diff', async (projectId: unknown, file: unknown, threadId?: unknown) => gitDiff(workspacePath(projectId, threadId), assertText(file, 4000)));
   handle('git-commit', async (input: CommitInput) => {
     if (!input || !Array.isArray(input.files) || input.files.length > 1000) throw new Error('Invalid commit');
-    const result = await gitCommit(store.getProject(assertId(input.projectId)).path, input.files.map(file => assertText(file, 4000)), assertText(input.message, 1000));
+    const result = await gitCommit(workspacePath(input.projectId, input.threadId), input.files.map(file => assertText(file, 4000)), assertText(input.message, 1000));
     emitSnapshot(); return result;
   });
-  handle('git-push', async (projectId: unknown) => gitPush(store.getProject(assertId(projectId)).path));
+  handle('git-push', async (projectId: unknown, threadId?: unknown) => gitPush(workspacePath(projectId, threadId)));
   handle('create-pr', async (input: PRInput) => {
     if (!input || typeof input.draft !== 'boolean') throw new Error('Invalid pull request');
-    return createPullRequest(store.getProject(assertId(input.projectId)).path, { title: assertText(input.title, 300), body: assertText(input.body, 20000), base: input.base ? assertText(input.base, 200) : undefined, draft: input.draft });
+    return createPullRequest(workspacePath(input.projectId, input.threadId), { title: assertText(input.title, 300), body: assertText(input.body, 20000), base: input.base ? assertText(input.base, 200) : undefined, draft: input.draft });
   });
   handle('open-external', async (url: unknown) => {
     const value = new URL(assertText(url, 2000));

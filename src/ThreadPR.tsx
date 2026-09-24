@@ -9,6 +9,7 @@ export function ThreadPR({ thread }: { thread: Thread }) {
   useEffect(() => {
     let disposed = false, pending = false;
     setPR(null); setError('');
+    if (!thread.branch || !thread.repository) return;
     async function check() {
       if (pending || document.hidden) return;
       pending = true; setLoading(true);
@@ -20,10 +21,9 @@ export function ThreadPR({ thread }: { thread: Thread }) {
     window.addEventListener('focus', check);
     return () => { disposed = true; clearInterval(timer); window.removeEventListener('focus', check); };
   }, [thread.id, thread.branch, thread.repository, refresh]);
-  if (!thread.branch || !thread.repository) return null;
+  if (!thread.branch || !thread.repository || !pr) return null;
   return <div className="thread-pr">
-    {pr ? <button className="thread-pr-link" title={`${pr.title} · ${pr.state}`} onClick={() => window.j2code.openExternal(pr.url).catch(e => setError(String(e)))}><GitPullRequest size={14}/><span>#{pr.number}</span><span>View in GitHub</span></button>
-      : <span title={error || `No PR found for ${thread.branch}`}>{error ? 'GitHub unavailable' : loading ? 'Checking PR…' : 'No PR yet'}</span>}
+    <button className="thread-pr-link" title={`${pr.title} · ${pr.state}`} onClick={() => window.j2code.openExternal(pr.url).catch(e => setError(String(e)))}><GitPullRequest size={14}/><span>#{pr.number}</span><span>View in GitHub</span></button>
     <button className="icon-button" aria-label="Refresh thread PR" title={error || 'Refresh thread PR'} disabled={loading} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={12} className={loading ? 'spin' : ''}/></button>
   </div>;
 }

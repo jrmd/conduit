@@ -1,0 +1,241 @@
+/* Approved Quiet focus design. Layout and palette only; real state stays in App. */
+html[data-theme] {
+  --q-bg:#202220; --q-sidebar:#1b1d1b; --q-paper:#262926;
+  --q-text:#e1e3de; --q-muted:#a0a69d; --q-line:#373c36;
+  --q-hover:#2c312b; --q-selected:#353d32; --q-accent:#a0baa7;
+}
+html[data-theme=light] {
+  --q-bg:#fafaf9; --q-sidebar:#f0f0ed; --q-paper:#fff;
+  --q-text:#303330; --q-muted:#70756f; --q-line:#dedfd9;
+  --q-hover:#e8eae4; --q-selected:#dee1da; --q-accent:#466c59;
+}
+html[data-theme] .quiet-focus { color:var(--q-text); background:var(--q-bg); }
+html[data-theme] .quiet-focus :is(.main-area,.conversation,.topbar,.settings-screen) { background:var(--q-bg); color:var(--q-text); }
+html[data-theme] .quiet-focus .sidebar { width:208px; min-width:208px; background:var(--q-sidebar); border-color:var(--q-line); }
+html[data-theme] .quiet-focus .sidebar-top { height:53px; min-height:53px; padding:12px 20px; border:0; }
+html[data-theme] .quiet-focus .brand { gap:8px; font-size:19px; font-weight:600; letter-spacing:-.6px; color:var(--q-text); }
+html[data-theme] .quiet-focus .vulp-brand-logo { width:23px; height:23px; border-radius:5px; }
+html[data-theme] .quiet-focus .sidebar-content { padding:7px 10px; }
+html[data-theme] .quiet-focus .new-thread-button { padding:6px 10px; min-height:30px; margin:0 0 3px; border:0; border-radius:4px; box-shadow:none; background:transparent; color:var(--q-text); font-size:12px; }
+html[data-theme] .quiet-focus .new-thread-button>svg { color:var(--q-muted); width:15px; }
+html[data-theme] .quiet-focus .new-thread-button kbd { display:none; }
+html[data-theme] .quiet-focus .new-thread-button:hover:not(:disabled) { background:var(--q-hover); }
+html[data-theme] .quiet-focus .thread-search { padding:6px 8px; margin:0 2px 7px; border:1px solid transparent; color:var(--q-muted); }
+html[data-theme] .quiet-focus .thread-search:focus-within { border-color:var(--q-line); }
+html[data-theme] .quiet-focus .thread-search input { color:var(--q-text); font-size:12px; }
+html[data-theme] .quiet-focus .projects-heading { margin:9px 0 2px; padding:0 8px; color:var(--q-muted); font-weight:400; font-size:10px; }
+html[data-theme] .quiet-focus .thread-sections { margin:0 5px 9px; gap:12px; }
+html[data-theme] .quiet-focus .thread-sections button { flex:none; padding:3px 0; border-radius:0; color:var(--q-muted); background:none; font-size:10px; border-bottom:1px solid transparent; }
+html[data-theme] .quiet-focus .thread-sections button[aria-pressed=true] { border-bottom-color:var(--q-muted); color:var(--q-text); }
+html[data-theme] .quiet-focus .project-tree { gap:5px; }
+html[data-theme] .quiet-focus .project-row { height:28px; margin-bottom:2px; color:var(--q-text); }
+html[data-theme] .quiet-focus .project-title { height:28px; font-size:12px; font-weight:550; }
+html[data-theme] .quiet-focus :is(.project-title svg,.project-disclosure,.project-row-action) { color:var(--q-muted); }
+html[data-theme] .quiet-focus .project-threads { margin:0 0 8px 10px; padding-left:10px; border-left:1px solid var(--q-line); }
+html[data-theme] .quiet-focus .sidebar-thread .thread-item { min-height:28px; padding:5px 8px; gap:6px; border-radius:4px; font-size:12px; line-height:18px; align-items:center; color:var(--q-text); }
+html[data-theme] .quiet-focus .thread-item.active { background:var(--q-selected); }
+html[data-theme] .quiet-focus .thread-item.active:before { display:none; }
+html[data-theme] .quiet-focus .thread-item-text { gap:0; }
+html[data-theme] .quiet-focus .thread-branch { display:none; }
+html[data-theme] .quiet-focus .sidebar-thread .thread-item time { display:block; opacity:1; font-size:10px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .sidebar-thread:is(:hover,:focus-within) .thread-item { padding-right:25px; }
+html[data-theme] .quiet-focus .sidebar-thread:is(:hover,:focus-within) .thread-item time { display:none; }
+html[data-theme] .quiet-focus .thread-more { top:2px; color:var(--q-muted); }
+html[data-theme] .quiet-focus :is(.thread-item:hover,.project-row:hover,.project-disclosure:hover,.project-row-action:hover,.thread-more:hover,.footer-settings:hover,.footer-settings.active) { background:var(--q-hover); color:var(--q-text); }
+html[data-theme] .quiet-focus .sidebar-footer { margin:0 10px; padding:0 7px; border-color:var(--q-line); color:var(--q-muted); height:40px; min-height:40px; }
+html[data-theme] .quiet-focus .footer-settings { order:-1; margin:0 auto 0 0; color:var(--q-muted); }
+html[data-theme] .quiet-focus .app-version { margin-left:auto; }
+html[data-theme] .quiet-focus .topbar { height:52px; min-height:52px; padding:0 26px; border:0; }
+html[data-theme] .quiet-focus .topbar strong { color:var(--q-text); font-size:12px; font-weight:500; }
+html[data-theme] .quiet-focus :is(.breadcrumb-project,.project-picker-trigger,.icon-button,.branch-pill,.branch-pill svg) { color:var(--q-muted); }
+html[data-theme] .quiet-focus .branch-pill { background:none; border:0; }
+html[data-theme] .quiet-focus :is(.icon-button:hover,.icon-button.is-on,.project-picker-trigger:hover) { background:var(--q-hover); color:var(--q-text); }
+html[data-theme] .quiet-focus .count-dot { position:static; font-size:10px; border:0; border-radius:3px; color:var(--q-muted); background:var(--q-sidebar); min-width:16px; padding:1px 4px; }
+html[data-theme] .quiet-focus .messages-inner { width:min(100%,790px); padding:38px 28px 20px; }
+html[data-theme] .quiet-focus .message-avatar { display:none; }
+html[data-theme] .quiet-focus .message-heading strong { color:var(--q-text); font-size:12px; font-weight:550; }
+html[data-theme] .quiet-focus .message-heading time { color:var(--q-muted); }
+html[data-theme] .quiet-focus .message-text { color:var(--q-text); font-size:14px; line-height:1.8; }
+html[data-theme] .quiet-focus .message-text :is(h1,h2,h3) { color:var(--q-text); font-weight:550; }
+html[data-theme] .quiet-focus .message-user .message-body { background:var(--q-sidebar); border:0; border-radius:8px; padding:12px 16px; color:var(--q-text); }
+html[data-theme] .quiet-focus .message-user .message-text { color:var(--q-text); font-size:13px; }
+html[data-theme] .quiet-focus :is(.copy-response,.activity-toggle) { color:var(--q-muted); }
+html[data-theme] .quiet-focus .activity-flow { border-color:var(--q-line); }
+html[data-theme] .quiet-focus .composer-zone { width:min(100%,790px); padding:10px 28px 22px; }
+html[data-theme] .quiet-focus .composer { background:var(--q-paper); border:1px solid var(--q-line); border-radius:8px; box-shadow:0 2px 7px #00000003; }
+html[data-theme] .quiet-focus .composer:focus-within { border-color:var(--q-accent); box-shadow:0 0 0 1px var(--q-line); }
+html[data-theme] .quiet-focus .composer textarea { color:var(--q-text); font-size:13px; }
+html[data-theme] .quiet-focus .composer textarea::placeholder { color:var(--q-muted); }
+html[data-theme] .quiet-focus :is(.model-select,.effort-select,.mode-select,.attach-button,.composer-footnote) { color:var(--q-muted); }
+html[data-theme] .quiet-focus .send-button { border-radius:5px; background:var(--q-accent); color:var(--q-paper); border:0; box-shadow:none; }
+html[data-theme] .quiet-focus .send-button:disabled { background:var(--q-selected); color:var(--q-muted); box-shadow:none; }
+html[data-theme] .quiet-focus :is(.empty-conversation,.welcome-state) { padding:24px 28px; }
+html[data-theme] .quiet-focus :is(.empty-conversation,.welcome-state):after { background:linear-gradient(180deg,var(--q-bg),transparent 32%,transparent 65%,var(--q-bg)); }
+html[data-theme] .quiet-focus :is(.empty-conversation h1,.welcome-state h1) { color:var(--q-text); background:none; font-size:24px; font-weight:500; letter-spacing:-.5px; text-shadow:none; }
+html[data-theme] .quiet-focus .hero-project { color:var(--q-muted); text-shadow:none; }
+html[data-theme] .quiet-focus .starter-prompts { gap:18px; margin-top:24px; }
+html[data-theme] .quiet-focus .starter-prompts button { padding:8px 4px; border:0; border-radius:4px; background:transparent; color:var(--q-text); box-shadow:none; font-size:12px; }
+html[data-theme] .quiet-focus .starter-prompts button>svg { display:none; }
+html[data-theme] .quiet-focus .starter-prompts button:hover { background:var(--q-hover); }
+html[data-theme] .quiet-focus .changes-panel { width:340px; min-width:340px; background:var(--q-bg); border-color:var(--q-line); box-shadow:none; }
+html[data-theme] .quiet-focus .changes-header { height:54px; min-height:54px; padding:12px 16px; background:transparent; border:0; }
+html[data-theme] .quiet-focus :is(.panel-title,.diff-heading) { color:var(--q-text); font-size:12px; font-weight:500; }
+html[data-theme] .quiet-focus .changes-count { color:var(--q-muted); background:none; }
+html[data-theme] .quiet-focus .review-tabs { display:flex; gap:20px; padding:0 16px; border-bottom:1px solid var(--q-line); flex:none; }
+html[data-theme] .quiet-focus .review-tabs button { display:flex; align-items:center; gap:8px; background:none; border:0; border-bottom:2px solid transparent; border-radius:0; color:var(--q-muted); padding:8px 0; font-size:11px; }
+html[data-theme] .quiet-focus .review-tabs button[aria-pressed=true] { color:var(--q-text); border-bottom-color:var(--q-text); }
+html[data-theme] .quiet-focus .review-tabs span { font-size:10px; }
+html[data-theme] .quiet-focus .review-activity { padding:18px 16px; overflow:auto; flex:1; min-height:0; }
+html[data-theme] .quiet-focus .review-activity>p { color:var(--q-muted); font-size:12px; }
+html[data-theme] .quiet-focus .review-activity .activity-inline { margin:0; }
+html[data-theme] .quiet-focus .repo-summary { border-color:var(--q-line); background:none; padding:12px 16px; color:var(--q-muted); font-size:11px; }
+html[data-theme] .quiet-focus .repo-summary strong { color:var(--q-muted); font-weight:400; }
+html[data-theme] .quiet-focus .file-list-heading { font-size:10px; font-weight:400; letter-spacing:0; color:var(--q-muted); padding:12px 16px 5px; }
+html[data-theme] .quiet-focus .file-row { margin:0 10px; border:0; border-radius:3px; }
+html[data-theme] .quiet-focus .file-row:hover { background:var(--q-hover); }
+html[data-theme] .quiet-focus .file-row.file-selected { background:var(--q-selected); }
+html[data-theme] .quiet-focus .file-open { min-height:34px; padding:7px 8px; color:var(--q-text); }
+html[data-theme] .quiet-focus .file-detail strong { font-size:11px; font-weight:400; color:var(--q-text); }
+html[data-theme] .quiet-focus .file-detail small { font-size:10px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .diff-card { border-radius:0; border:0; border-top:1px solid var(--q-line); margin:18px 0 0; background:var(--q-paper); }
+html[data-theme] .quiet-focus .diff-heading { background:var(--q-bg); border-color:var(--q-line); font:11px/1.5 ui-monospace,monospace; padding:12px 16px; }
+html[data-theme] .quiet-focus .diff-content { background:var(--q-paper); color:var(--q-muted); font-size:11px; }
+html[data-theme] .quiet-focus .changes-empty { color:var(--q-muted); }
+html[data-theme] .quiet-focus .changes-empty strong { color:var(--q-text); font-weight:500; }
+html[data-theme] .quiet-focus .settings-content { max-width:860px; padding:38px 40px 64px; }
+html[data-theme] .quiet-focus .settings-content :is(h1,h2,strong) { color:var(--q-text); }
+html[data-theme] .quiet-focus .settings-content h1 { font-weight:500; }
+html[data-theme] .quiet-focus .settings-content :is(p,small,.agent-state) { color:var(--q-muted); }
+html[data-theme] .quiet-focus .settings-content :is(.appearance-settings,.update-settings,.summary-settings,.agent-row) { border-color:var(--q-line); scroll-margin-top:24px; }
+html[data-theme] .quiet-focus .settings-nav { display:flex; gap:20px; padding:16px 0 10px; flex-wrap:wrap; border-bottom:1px solid var(--q-line); }
+html[data-theme] .quiet-focus .settings-nav button { padding:5px 0; border:0; background:none; color:var(--q-muted); font-size:12px; }
+html[data-theme] .quiet-focus .settings-nav button:hover { color:var(--q-text); }
+/* Shared popovers retain their keyboard and provider behavior in both themes. */
+html[data-theme] .quiet-focus :is(.model-menu,.effort-menu,.project-picker-menu,.workspace-context-menu,.provider-menu,.git-actions-menu,.composer-autocomplete,.dialog) { background:var(--q-paper); border-color:var(--q-line); color:var(--q-text); }
+html[data-theme] .quiet-focus :is(.model-option,.effort-menu button,.project-picker-menu button,.workspace-context-menu button,.git-actions-menu button,.composer-autocomplete [role=option]) { color:var(--q-text); }
+html[data-theme] .quiet-focus :is(.model-option.selected,.model-option:hover,.project-picker-menu button:hover,.workspace-context-menu button:hover,.git-actions-menu button:hover:not(:disabled),.composer-autocomplete [aria-selected=true]) { background:var(--q-hover); color:var(--q-text); }
+html[data-theme] .quiet-focus :is(.git-actions-trigger,.ghost-button,.appearance-options button,.summary-settings select) { background:var(--q-paper); border-color:var(--q-line); color:var(--q-text); }
+html[data-theme] .quiet-focus .appearance-options button[aria-pressed=true] { background:var(--q-selected); border-color:var(--q-accent); }
+html[data-theme] .quiet-focus .provider-toggle[aria-checked=true] { background:var(--q-accent); }
+@media(max-width:1200px) and (min-width:901px) {
+  html[data-theme] .quiet-focus .changes-panel { width:310px; min-width:310px; }
+}
+@media(max-width:900px) {
+  html[data-theme] .quiet-focus .changes-panel { top:52px; width:min(420px,calc(100vw - 208px)); min-width:0; box-shadow:-12px 0 28px #0002; }
+  html[data-theme] .quiet-focus .topbar { padding:0 16px; }
+  html[data-theme] .quiet-focus :is(.messages-inner,.composer-zone) { padding-left:20px; padding-right:20px; }
+}
+@media(max-width:650px) {
+  html[data-theme] .quiet-focus .sidebar { width:min(260px,85vw); min-width:0; }
+  html[data-theme] .quiet-focus .changes-panel { width:100%; }
+  html[data-theme] .quiet-focus .topbar { padding:0 12px; }
+  html[data-theme] .quiet-focus .composer-zone { padding:8px 12px 12px; }
+  html[data-theme] .quiet-focus .messages-inner { padding:24px 16px; }
+  html[data-theme] .quiet-focus .settings-content { padding:24px 20px; }
+  html[data-theme] .quiet-focus .settings-nav { gap:14px; }
+  html[data-theme] .quiet-focus .starter-prompts { flex-wrap:wrap; gap:8px; }
+}
+
+html[data-theme] .quiet-focus .brand>span { color:var(--q-text); }
+html[data-theme] .quiet-focus .conversation:has(.empty-conversation) { position:relative; isolation:isolate; justify-content:center; }
+html[data-theme] .quiet-focus .empty-conversation { position:static; isolation:auto; flex:0 0 auto; overflow:visible; padding:0 28px 24px; }
+html[data-theme] .quiet-focus .conversation:has(.empty-conversation) .composer-zone { position:relative; z-index:1; }
+html[data-theme] .quiet-focus .settings-content { display:grid; grid-template-columns:140px minmax(0,1fr); column-gap:30px; max-width:960px; }
+html[data-theme] .quiet-focus .settings-content>h1,html[data-theme] .quiet-focus .settings-intro { grid-column:1/-1; }
+html[data-theme] .quiet-focus .settings-intro { grid-row:2; margin-bottom:30px; }
+html[data-theme] .quiet-focus .settings-nav { grid-column:1; grid-row:3/20; flex-direction:column; align-items:flex-start; align-self:start; border:0; gap:10px; padding:0; position:sticky; top:20px; }
+html[data-theme] .quiet-focus .settings-content>:not(h1):not(.settings-intro):not(.settings-nav) { grid-column:2; }
+html[data-theme] .quiet-focus .settings-content .appearance-settings { margin-top:0; }
+@media(max-width:650px) {
+ html[data-theme] .quiet-focus .settings-content { display:block; }
+ html[data-theme] .quiet-focus .settings-nav { position:static; flex-direction:row; margin:14px 0; gap:12px; }
+ html[data-theme] .quiet-focus .conversation:has(.empty-conversation) { overflow:auto; }
+ html[data-theme] .quiet-focus .empty-conversation { padding:22px 18px 12px; }
+}
+
+/* Settings are separate panels, not anchor links into a long page. */
+html[data-theme] .quiet-focus .settings-nav { grid-row:3; gap:4px; position:static; }
+html[data-theme] .quiet-focus .settings-nav button { width:100%; text-align:left; padding:8px 10px; border-radius:4px; }
+html[data-theme] .quiet-focus .settings-nav button[aria-selected=true] { color:var(--q-text); background:var(--q-selected); }
+html[data-theme] .quiet-focus .settings-panel { grid-column:2; grid-row:3; min-width:0; }
+html[data-theme] .quiet-focus .settings-panel[hidden] { display:none; }
+html[data-theme] .quiet-focus .settings-panel h2 { margin-top:0; }
+html[data-theme] .quiet-focus .settings-panel :is(.summary-settings,.update-settings) { margin-top:0; padding-top:0; }
+/* The shader stays behind the workspace; all new-thread text sits on the opaque composer. */
+html[data-theme] .quiet-focus .empty-conversation { padding:0; height:0; }
+html[data-theme] .quiet-focus .new-thread-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:18px 16px 10px; }
+html[data-theme] .quiet-focus .new-thread-heading h1 { margin:0; color:var(--q-text); font-size:20px; font-weight:500; letter-spacing:-.4px; }
+html[data-theme] .quiet-focus .new-thread-heading>span { display:flex; align-items:center; gap:7px; color:var(--q-muted); font-size:11px; min-width:0; overflow-wrap:anywhere; }
+html[data-theme] .quiet-focus .conversation:has(.empty-conversation) .composer { background:var(--q-paper); box-shadow:0 8px 32px #0000000c; }
+@media(max-width:650px) {
+ html[data-theme] .quiet-focus .settings-nav button { width:auto; padding:7px 9px; }
+ html[data-theme] .quiet-focus .settings-nav { gap:3px; }
+ html[data-theme] .quiet-focus .settings-panel { margin-top:24px; }
+ html[data-theme] .quiet-focus .empty-conversation { padding:0; }
+}
+
+html[data-theme] .quiet-focus .new-thread-question { display:flex; align-items:baseline; flex-wrap:wrap; column-gap:7px; row-gap:5px; color:var(--q-text); font-size:23px; font-weight:450; letter-spacing:-.5px; line-height:1.5; }
+html[data-theme] .quiet-focus .new-thread-heading { padding:20px 16px 12px; }
+html[data-theme] .quiet-focus .project-picker-inline { display:inline-flex; min-width:0; max-width:100%; }
+html[data-theme] .quiet-focus .project-picker-inline .project-picker-trigger { max-width:100%; padding:0; border-radius:2px; color:var(--q-text); font:inherit; letter-spacing:inherit; gap:0; }
+html[data-theme] .quiet-focus .project-picker-inline .project-picker-trigger>span { border-bottom:1px dotted var(--q-muted); }
+html[data-theme] .quiet-focus .project-picker-inline .project-picker-trigger>svg { display:none; }
+html[data-theme] .quiet-focus .project-picker-inline .project-picker-menu { top:calc(100% + 9px); width:300px; max-width:min(300px,calc(100vw - 64px)); letter-spacing:0; font-weight:400; }
+html[data-theme] .quiet-focus .new-thread-question .question-mark { margin-left:-7px; }
+@media(max-width:650px) {
+ html[data-theme] .quiet-focus .new-thread-question { font-size:20px; }
+ html[data-theme] .quiet-focus .project-picker-inline .project-picker-menu { position:fixed; left:24px; right:24px; top:100px; width:auto; max-width:none; }
+}
+
+/* New-thread project selection lives in the welcome question, above the input. */
+html[data-theme] .quiet-focus .empty-conversation { height:auto; padding:0 28px 24px; position:static; flex:0 0 auto; }
+html[data-theme] .quiet-focus .empty-conversation .new-thread-heading { padding:0; max-width:100%; justify-content:center; position:relative; z-index:2; }
+html[data-theme] .quiet-focus .empty-conversation .new-thread-question { justify-content:center; font-size:30px; text-align:center; color:var(--q-text); text-shadow:0 2px 5px var(--q-bg),0 0 20px var(--q-bg); }
+html[data-theme] .quiet-focus .empty-conversation .project-picker-trigger { text-shadow:inherit; }
+html[data-theme] .quiet-focus .empty-conversation .project-picker-menu { text-shadow:none; text-align:left; }
+@media(max-width:650px) {
+ html[data-theme] .quiet-focus .empty-conversation { padding:0 20px 20px; }
+ html[data-theme] .quiet-focus .empty-conversation .new-thread-question { font-size:24px; }
+}
+
+/* Provider tabs and model-only favourites, from picker C. */
+html[data-theme] .quiet-focus .model-browser { width:330px; height:auto; max-height:calc(100dvh - 200px); padding:0; flex-direction:column; }
+html[data-theme] .quiet-focus .model-browser .model-search { margin:0; padding:13px 14px; gap:9px; border:0; border-bottom:1px solid var(--q-line); border-radius:0; background:transparent; color:var(--q-muted); }
+html[data-theme] .quiet-focus .model-browser .model-search input { border:0; background:transparent; color:var(--q-text); box-shadow:none; padding:0; font-size:12px; }
+html[data-theme] .quiet-focus .model-provider-filters { flex-direction:row; width:auto; padding:8px 10px; gap:6px; border:0; border-bottom:1px solid var(--q-line); background:transparent; }
+html[data-theme] .quiet-focus .model-provider-filters button { width:32px; height:32px; padding:0; color:var(--q-muted); }
+html[data-theme] .quiet-focus .model-provider-filters button>svg { width:16px; height:16px; }
+html[data-theme] .quiet-focus .model-provider-filters button[aria-pressed=true] { background:var(--q-selected); color:var(--q-text); }
+html[data-theme] .quiet-focus .model-browser .model-options { margin:0; padding:6px; max-height:310px; }
+html[data-theme] .quiet-focus .model-choice-row { display:flex; align-items:center; border-radius:5px; }
+html[data-theme] .quiet-focus .model-choice-row.selected { background:var(--q-selected); }
+html[data-theme] .quiet-focus .model-browser .model-choice { flex:1; min-width:0; padding:9px; gap:10px; color:var(--q-text); background:transparent; }
+html[data-theme] .quiet-focus .model-choice>svg:first-child { width:15px; height:15px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .model-browser .model-favourite { width:31px; flex:none; padding:9px; margin-right:3px; color:var(--q-muted); background:transparent; opacity:.5; }
+html[data-theme] .quiet-focus .model-browser .model-favourite>svg { color:inherit; }
+html[data-theme] .quiet-focus .model-browser .model-favourite[aria-pressed=true] { color:var(--q-accent); opacity:1; }
+html[data-theme] .quiet-focus .model-choice-row:hover .model-favourite,html[data-theme] .quiet-focus .model-favourite:focus-visible { opacity:1; }
+html[data-theme] .quiet-focus .model-browser button:hover { background:var(--q-hover); }
+html[data-theme] .quiet-focus .model-browser button:focus-visible { outline:2px solid var(--q-accent); outline-offset:-2px; }
+html[data-theme] .quiet-focus .model-browser .model-note,html[data-theme] .quiet-focus .model-browser small { color:var(--q-muted); }
+
+/* Raise open composer popovers above the new-thread heading and its shadow. */
+html[data-theme] .quiet-focus .conversation:has(.empty-conversation) .composer-zone:has(.model-menu,.effort-menu,.composer-autocomplete) { z-index:3; }
+
+html[data-theme] .quiet-focus .approval-mode-wrap { position:relative; margin-left:auto; }
+html[data-theme] .quiet-focus .approval-mode-menu { position:absolute; bottom:calc(100% + 12px); right:0; width:300px; max-width:calc(100vw - 40px); padding:6px; z-index:60; border:1px solid var(--q-line); border-radius:9px; background:var(--q-paper); box-shadow:0 12px 40px #0003; }
+html[data-theme] .quiet-focus .approval-mode-menu button { display:flex; align-items:center; width:100%; gap:12px; padding:10px; text-align:left; border:0; border-radius:5px; background:transparent; color:var(--q-text); }
+html[data-theme] .quiet-focus .approval-mode-menu button:hover,html[data-theme] .quiet-focus .approval-mode-menu button[aria-pressed=true] { background:var(--q-hover); }
+html[data-theme] .quiet-focus .approval-mode-menu button>span { flex:1; }
+html[data-theme] .quiet-focus .approval-mode-menu strong { font-size:12px; font-weight:500; }
+html[data-theme] .quiet-focus .approval-mode-menu small { display:block; margin-top:4px; font-size:11px; line-height:1.5; color:var(--q-muted); }
+html[data-theme] .quiet-focus .approval-mode-menu p { margin:8px 10px; font-size:11px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .conversation:has(.empty-conversation) .composer-zone:has(.approval-mode-menu) { z-index:3; }
+html[data-theme] .quiet-focus .approval-request { margin:10px 12px; padding:14px; background:var(--q-sidebar); border:1px solid var(--q-line); border-radius:7px; }
+html[data-theme] .quiet-focus .approval-request strong { font-size:12px; font-weight:500; }
+html[data-theme] .quiet-focus .approval-request pre { max-height:180px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .approval-request>div { display:flex; justify-content:flex-end; gap:8px; }
+html[data-theme] .quiet-focus .approval-request button { padding:7px 12px; border:1px solid var(--q-line); border-radius:5px; background:var(--q-paper); color:var(--q-text); }
+html[data-theme] .quiet-focus .approval-request button:last-child { background:var(--q-selected); }
+
+html[data-theme] .quiet-focus .approval-requests { max-height:min(360px,50dvh); overflow:auto; }

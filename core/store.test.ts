@@ -70,3 +70,22 @@ test('permissions can change on a resumed thread while provider stays locked', a
     assert.equal(restored.getThread(thread.id).mode,'read');
   } finally { await rm(dir,{recursive:true,force:true}); }
 });
+
+test('pinning survives restart and preserves activity order', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'vulp-pins-'));
+  try {
+    const file = path.join(dir, 'state.json');
+    const store = new Store(file); await store.load();
+    const project = await store.addProject(dir);
+    const thread = await store.createThread(project.id, 'codex', 'read');
+    await store.pinThread(thread.id, true);
+    const restored = new Store(file); await restored.load();
+    assert.equal(restored.getThread(thread.id).pinned, true);
+    assert.equal(restored.getThread(thread.id).updatedAt, thread.updatedAt);
+    await restored.pinThread(thread.id, false);
+    const unpinned = new Store(file); await unpinned.load();
+    assert.equal(unpinned.getThread(thread.id).pinned, false);
+    assert.equal(unpinned.getThread(thread.id).updatedAt, thread.updatedAt);
+    await assert.rejects(() => store.pinThread('missing', true));
+  } finally { await rm(dir, {recursive:true, force:true}); }
+});

@@ -44,8 +44,8 @@ async function skills(root: string, provider: ProviderId, plugin?: string): Prom
 }
 export async function capabilities(cwd:string,provider:ProviderId):Promise<{items:ComposerItem[];warning?:string}> {
  const home=os.homedir(),codex=process.env.CODEX_HOME || path.join(home,'.codex');
- const folders=provider==='codex'?['.agents/skills','.codex/skills']:provider==='claude'?['.claude/skills']:provider==='cursor'?['.agents/skills','.cursor/skills']:['.opencode/skills','.claude/skills','.agents/skills'];
- const roots=folders.flatMap(folder=>[path.join(cwd,folder),path.join(home,folder)]);
+ const folders=provider==='codex'?['.agents/skills','.codex/skills']:provider==='claude'?['.claude/skills']:provider==='cursor'?['.agents/skills','.cursor/skills']:provider==='copilot'?['.github/skills','.claude/skills','.agents/skills']:['.opencode/skills','.claude/skills','.agents/skills'];
+ const roots=provider==='copilot' ? [...folders.map(folder=>path.join(cwd,folder)),path.join(home,'.copilot/skills'),path.join(home,'.agents/skills')] : folders.flatMap(folder=>[path.join(cwd,folder),path.join(home,folder)]);
  if(provider==='codex')roots.push(path.join(codex,'skills'),'/etc/codex/skills');
  if(provider==='opencode')roots.push(path.join(process.env.XDG_CONFIG_HOME || path.join(home,'.config'),'opencode/skills'));
  // Include parent project scopes only as far as the worktree root.

@@ -1,0 +1,34 @@
+.model-controls { padding:0; --model-control-accent:#b58aee; }
+html[data-theme="light"] .model-controls { --model-control-accent:#8852bd; }
+.model-control-section + .model-control-section { border-top:1px solid var(--q-line); margin-top:7px; padding-top:5px; }
+.model-control-heading { display:flex; align-items:center; justify-content:space-between; padding:6px 9px; color:var(--q-muted); font-size:11px; font-weight:400; }
+.effort-menu .model-control-heading .model-control-reset { display:flex; width:auto; padding:0; color:var(--q-muted); }
+.model-control-choices { display:flex; flex-direction:column; }
+.effort-menu .model-control-choices button { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:32px; border:0; border-radius:6px; padding:7px 9px; text-align:left; text-transform:none; font-size:13px; background:transparent; }
+.effort-menu .model-control-choices button:hover:not(:disabled), .effort-menu .model-control-choices button[aria-pressed=true] { background:var(--q-hover); }
+.effort-menu .model-control-choices button[aria-pressed=true] > svg { color:var(--model-control-accent); flex:none; }
+.model-control-choices em { display:inline-block; font-size:9px; font-style:normal; padding:1px 4px; border-radius:3px; margin-left:6px; color:var(--q-muted); background:var(--q-sidebar); }
+html[data-theme] .quiet-focus .model-control-choices small { display:block; color:var(--q-muted); font-size:10px; margin-top:3px; }
+.model-control-choices button:disabled { opacity:.35; cursor:not-allowed; }
+.model-control-context { flex-direction:row; flex-wrap:wrap; gap:5px; padding:3px 7px 5px; }
+.effort-menu .model-control-context button { width:auto; min-height:28px; padding:6px 9px; font-size:11px; background:var(--q-sidebar); }
+.effort-menu .model-control-context button[aria-pressed=true] { color:var(--model-control-accent); }
+.model-visibility { margin-top:24px; }
+.model-visibility details { margin:12px 0; }
+.model-visibility summary { cursor:pointer; padding:8px 0; }
+.model-visibility label { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:8px; font-size:13px; }
+.model-visibility-list { max-height:320px; overflow:auto; }
+.composer .effort-menu { width:240px; max-width:calc(100vw - 32px); max-height:var(--model-menu-available-height, calc(100dvh - 24px)); overflow-y:auto; overflow-x:hidden; padding:7px; border-radius:12px; }
+@media(max-width:600px) { .composer .effort-wrap { position:static; } .composer .effort-menu { left:12px; bottom:calc(100% + 8px); } }
+
+.model-visibility details { border-bottom:1px solid var(--q-line); padding-bottom:8px; }
+.model-visibility summary { display:flex; align-items:center; gap:8px; list-style:none; font-size:13px; font-weight:500; }
+.model-visibility summary::-webkit-details-marker { display:none; }
+.model-visibility summary svg { color:var(--q-muted); transition:transform .15s; }
+.model-visibility details[open] summary svg { transform:rotate(90deg); }
+.model-visibility-list { padding-left:14px; }
+
+/* Saving keeps the menu steady; unavailable combinations remain visibly disabled. */
+.model-controls[data-saving=true] button:disabled:not([data-unavailable=true]),
+.composer[data-model-options-saving=true] :is(.model-select,.effort-select,.mode-select):disabled { opacity:1; cursor:wait; }
+.effort-menu .model-controls[data-saving=true] .model-control-choices button:hover:not([data-unavailable=true]) { background:var(--q-hover); }

@@ -1,0 +1,40 @@
+/* Short, quiet feedback. Never animate streaming content or the entire chat. */
+:root { --motion-fast:140ms; --motion-enter:180ms; --motion-ease:cubic-bezier(.2,.8,.2,1); }
+.quiet-focus button {
+  transition:background-color var(--motion-fast) ease, color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+.quiet-focus :is(.session-actions,.session-status,.settled-age,.session-provider) {
+  transition:opacity var(--motion-fast) ease;
+}
+.quiet-focus .settled-toggle > svg { transition:transform var(--motion-enter) var(--motion-ease); }
+.thread-preview { animation:preview-enter var(--motion-enter) var(--motion-ease) both; }
+.thread-preview[data-closing=true] { animation:preview-exit 120ms ease both; pointer-events:none; }
+.quiet-focus :is(.workspace-context-menu,.project-picker-menu,.model-menu,.provider-menu,.effort-menu,.approval-menu,.git-actions-menu,.workspace-menu) {
+  animation:surface-enter var(--motion-enter) var(--motion-ease) both;
+}
+.quiet-focus :is(.sidebar-projects,.settled-list,.settings-content,.changes-panel,.dialog,.toast) {
+  animation:surface-fade var(--motion-enter) ease both;
+}
+.quiet-focus :is(.sidebar-scrim,.modal-backdrop) { animation:surface-fade var(--motion-fast) ease both; }
+@keyframes preview-enter { from { opacity:0; transform:translateX(-4px); } to { opacity:1; transform:translateX(0); } }
+@keyframes preview-exit { from { opacity:1; } to { opacity:0; } }
+@keyframes surface-enter { from { opacity:0; translate:0 4px; } to { opacity:1; translate:0 0; } }
+@keyframes surface-fade { from { opacity:0; } to { opacity:1; } }
+@media(min-width:651px) {
+  html[data-theme] .quiet-focus .sidebar {
+    overflow:hidden;
+    transition:margin-left 220ms var(--motion-ease), opacity 180ms ease, visibility 220ms;
+  }
+  html[data-theme] .quiet-focus.sidebar-collapsed .sidebar {
+    display:flex; margin-left:-264px; opacity:0; visibility:hidden; pointer-events:none;
+  }
+}
+@media(max-width:650px) {
+  html[data-theme] .quiet-focus .sidebar { transition:transform 220ms var(--motion-ease); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .quiet-focus *, .quiet-focus *::before, .quiet-focus *::after, .thread-preview {
+    animation:none !important; transition:none !important; scroll-behavior:auto !important;
+  }
+}
