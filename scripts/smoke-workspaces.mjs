@@ -21,7 +21,7 @@ try {
   git(repo,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','base'); git(repo,'branch','existing');
   await writeFile(path.join(repo,'file.txt'), 'local edit');
   await writeFile(path.join(data,'state.json'), JSON.stringify({projects:[{id:'p',name:'Workspace example',path:repo,createdAt:Date.now()}],threads:[],disabledProviders:[]}));
-  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,J2CODE_DATA_DIR:data,WORKSPACE_LOG:path.join(temp,'cwd')}});
+  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,J2CODE_DATA_DIR:data,WORKSPACE_LOG:path.join(temp,'cwd')}});
   const page = await app.firstWindow(), errors=[]; page.on('pageerror', e=>errors.push(e.message));
   await page.setViewportSize({width:1440,height:900});
   const location = page.getByRole('button',{name:'Workspace location',exact:true});

@@ -23,7 +23,7 @@ if(title)await new Promise(resolve=>setTimeout(resolve,400));
 console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:title?'Review project context':'Completed fixture response'}}));`;
  await writeFile(path.join(bin,'codex'),cli);await chmod(path.join(bin,'codex'),0o755);
  const now=Date.now();await writeFile(path.join(data,'state.json'),JSON.stringify({projects:[{id:'p',name:'Composer workspace',path:repo,createdAt:now}],threads:[],disabledProviders:['claude','cursor','opencode']}));
- app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),'--ozone-platform=x11','--disable-gpu',`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data,CODEX_HOME:home,PATH:`${bin}:${process.env.PATH}`}});
+ app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),'--ozone-platform=x11','--disable-gpu',`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data,CODEX_HOME:home,PATH:`${bin}:${process.env.PATH}`}});
  const page=await app.firstWindow();await page.setViewportSize({width:1440,height:900});
  await page.getByRole('button',{name:'Agent settings',exact:true}).click();
  await page.getByRole('button',{name:'Dark',exact:true}).click();

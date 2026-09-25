@@ -129,7 +129,7 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
   };
   try {
     if(codex) {
-      await rpc.request("initialize",{clientInfo:{name:"vulp",version:"0.5.0"},capabilities:{experimentalApi:true}});rpc.notify("initialized");
+      await rpc.request("initialize",{clientInfo:{name:"conduit",version:"0.5.0"},capabilities:{experimentalApi:true}});rpc.notify("initialized");
       const permissions=input.readOnlyChild ? {sandbox:'read-only',approvalPolicy:'never',approvalsReviewer:'user'} : codexPermissions(mode);
       const config: Record<string, unknown> = input.contextWindow === undefined ? {} : {model_context_window:input.contextWindow};
       if(input.readOnlyChild) {
@@ -144,14 +144,14 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
       await rpc.request("turn/start",{summary:"auto",threadId:sessionId,input:[{type:"text",text,text_elements:[]},...images.map(file=>({type:"localImage",path:file.path}))],effort:input.effort || null, serviceTierForTurn:input.fastMode ? "priority" : "default"});
       await finished;
     } else {
-      const initialized=await rpc.request("initialize",{protocolVersion:1,clientCapabilities:{},clientInfo:{name:"vulp",version:"0.5.0"}});
+      const initialized=await rpc.request("initialize",{protocolVersion:1,clientCapabilities:{},clientInfo:{name:"conduit",version:"0.5.0"}});
       if(sessionId && !initialized.agentCapabilities?.loadSession) throw new Error("This provider cannot resume sessions through ACP. Start a new thread.");
       const result=await rpc.request(sessionId?"session/load":"session/new",{...(sessionId?{sessionId}:{}),cwd:input.cwd,mcpServers:[]});
       sessionId=result.sessionId || sessionId; if(!sessionId) throw new Error("Provider did not return a session ID");
       input.onEvent({kind:"status",text:"Session started",sessionId});
       let configOptions=result.configOptions;
       // A resumed Copilot session may have persisted allow-all from another client.
-      // Keep permission decisions in Vulp, including its Full access policy.
+      // Keep permission decisions in Conduit, including its Full access policy.
       if(input.provider === "copilot" && configOptions?.some((option:any)=>option.id==="allow_all")) {
         await rpc.request("session/set_config_option",{sessionId,configId:"allow_all",value:"off"});
       }

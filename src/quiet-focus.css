@@ -26,7 +26,7 @@ html[data-theme] .quiet-focus :is(.main-area,.conversation,.topbar,.settings-scr
 html[data-theme] .quiet-focus .sidebar { width:208px; min-width:208px; background:var(--q-sidebar); border-color:var(--q-line); }
 html[data-theme] .quiet-focus .sidebar-top { height:53px; min-height:53px; padding:12px 20px; border:0; }
 html[data-theme] .quiet-focus .brand { gap:8px; font-size:19px; font-weight:600; letter-spacing:-.6px; color:var(--q-text); }
-html[data-theme] .quiet-focus .vulp-brand-logo { width:23px; height:23px; border-radius:5px; }
+html[data-theme] .quiet-focus .conduit-brand-logo { width:23px; height:23px; border-radius:5px; }
 html[data-theme] .quiet-focus .sidebar-content { padding:7px 10px; }
 html[data-theme] .quiet-focus .thread-search { padding:6px 8px; margin:0 2px 7px; border:1px solid transparent; color:var(--q-muted); }
 html[data-theme] .quiet-focus .thread-search:focus-within { border-color:var(--q-line); }

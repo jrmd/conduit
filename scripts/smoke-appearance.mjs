@@ -9,7 +9,7 @@ await mkdir(data);await mkdir(project);
 let app,page;
 async function launch(){
  const packaged=process.env.J2CODE_SMOKE_PACKAGED;
- app=await electron.launch({executablePath:path.join(root,packaged?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(packaged?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
+ app=await electron.launch({executablePath:path.join(root,packaged?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(packaged?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
  page=await app.firstWindow();await expect(page.getByRole('heading',{name:'Open a project',exact:true})).toBeVisible();
  await page.setViewportSize({width:1440,height:900});
 }

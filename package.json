@@ -1,15 +1,15 @@
 {
-  "name": "vulp",
+  "name": "conduit",
   "version": "0.6.0",
   "private": true,
   "description": "Local desktop workspace for CLI coding agents",
-  "author": "Vulp",
-  "desktopName": "vulp",
+  "author": "Conduit",
+  "desktopName": "conduit",
   "main": "dist/main.cjs",
   "scripts": {
     "build:main": "node scripts/build-main.mjs",
     "build": "vite build && npm run build:main",
-    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env J2CODE_DEV_URL=http://127.0.0.1:5173 electron .\"",
+    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env J2CODE_DEV_URL=http://127.0.0.1:5173 node scripts/dev-electron.mjs\"",
     "test": "node --import tsx --test core/*.test.ts",
     "typecheck": "tsc --noEmit",
     "package:linux": "npm run build && electron-builder --linux AppImage --publish never",
@@ -47,7 +47,7 @@
   },
   "build": {
     "appId": "dev.jrmd.vulp",
-    "productName": "Vulp",
+    "productName": "Conduit",
     "files": [
       "dist/**/*",
       "assets/icon.png",
@@ -82,16 +82,17 @@
       {
         "provider": "github",
         "owner": "jrmd",
-        "repo": "vulp",
+        "repo": "conduit",
         "private": true,
         "releaseType": "release"
       }
     ],
-    "artifactName": "Vulp-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Conduit-${version}-${os}-${arch}.${ext}"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jrmd/vulp.git"
+    "url": "https://github.com/jrmd/conduit.git"
   },
-  "packageManager": "pnpm@11.22.0"
+  "packageManager": "pnpm@11.22.0",
+  "productName": "Conduit"
 }

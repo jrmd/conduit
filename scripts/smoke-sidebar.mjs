@@ -19,7 +19,7 @@ try {
   await writeFile(path.join(repo, 'picker.ts'), "export const placeholder = 'Find a project';\n");
   const now = Date.now();
   await writeFile(path.join(data, 'state.json'), JSON.stringify({
-    projects:[{id:'p',name:'Vulp',path:repo,createdAt:now},{id:'p2',name:'Second project',path:temp,createdAt:now}], disabledProviders:[],
+    projects:[{id:'p',name:'Conduit',path:repo,createdAt:now},{id:'p2',name:'Second project',path:temp,createdAt:now}], disabledProviders:[],
     threads:[{id:'t',projectId:'p',provider:'codex',mode:'read',title:'Project picker',branch:'main',createdAt:now,updatedAt:now,
       messages:[{id:'u',role:'user',text:'Can we make the project picker easier to use?',createdAt:now},
         {id:'a',role:'assistant',text:'The picker now keeps the current project at the top. Search sits underneath, and “Open folder” stays at the bottom.\n\nI also tightened the spacing so longer folder names fit without pushing the menu wider.',createdAt:now+2}],
@@ -32,7 +32,7 @@ try {
     {...state.threads[0], id:'t4', title:'Archived exploration', settled:true, updatedAt:now-86400000}
   );
   await writeFile(path.join(data, 'state.json'), JSON.stringify(state));
-  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
+  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
   const page = await app.firstWindow(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:1440,height:900});
   await expect(page.locator('.session-card')).toHaveCount(3);
@@ -57,7 +57,7 @@ try {
   await projectCard.hover();
   await expect(page.getByRole('tooltip')).toContainText('Project picker');
   expect(await projectCard.locator('.session-project-name').boundingBox()).toEqual(metaBefore);
-  await expect(page.getByRole('tooltip')).toContainText('Vulp');
+  await expect(page.getByRole('tooltip')).toContainText('Conduit');
   await expect(page.getByRole('tooltip')).toContainText('main');
   await expect(page.getByRole('tooltip')).toContainText('Codex · Default');
   await page.screenshot({path:path.join(root,'artifacts/sidebar-hover.png')});

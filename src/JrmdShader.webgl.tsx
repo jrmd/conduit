@@ -1,6 +1,6 @@
 /* @jrmd · OpenShaders · https://openshaders.com/@jrmd
  * User-supplied halftone shader. Field and halftone parameters preserved.
- * Lifecycle adapted for Vulp's new-thread backdrop, including context-loss fallback.
+ * Lifecycle adapted for Conduit's new-thread backdrop, including context-loss fallback.
  */
 import { useEffect, useRef, useState } from 'react';
 const VERTEX_SHADER = `#version 300 es

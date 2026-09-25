@@ -10,7 +10,7 @@ const folder = path.join(temp, 'project');
 let app, page;
 async function launch() {
   const packaged = process.env.J2CODE_SMOKE_PACKAGED;
-  app = await electron.launch({ executablePath: path.join(root, packaged ? 'release/linux-unpacked/vulp' : 'node_modules/.bin/electron'), args: [...(packaged ? [] : [root]), `--user-data-dir=${path.join(temp, 'electron')}`], env: { ...process.env, J2CODE_DATA_DIR: data } });
+  app = await electron.launch({ executablePath: path.join(root, packaged ? 'release/linux-unpacked/conduit' : 'node_modules/.bin/electron'), args: [...(packaged ? [] : [root]), `--user-data-dir=${path.join(temp, 'electron')}`], env: { ...process.env, J2CODE_DATA_DIR: data } });
   page = await app.firstWindow();
   await expect(page.getByTestId('model-selector')).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });

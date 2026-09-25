@@ -3,7 +3,7 @@ html[data-theme] .quiet-focus .sidebar { width:264px; min-width:264px; backgroun
 html[data-theme] .quiet-focus .sidebar-top { height:56px; min-height:56px; padding:0 18px 0 20px; }
 html[data-theme] .quiet-focus .brand { font-size:18px; gap:9px; letter-spacing:-.6px; }
 html[data-theme] .quiet-focus .brand>span { background:var(--q-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:650; }
-html[data-theme] .quiet-focus .vulp-brand-logo { width:26px; height:26px; border-radius:0; }
+html[data-theme] .quiet-focus .conduit-brand-logo { width:26px; height:26px; border-radius:0; }
 html[data-theme] .quiet-focus .sidebar-collapse { margin-left:auto; }
 html[data-theme] .quiet-focus .sidebar-reopen { flex-shrink:0; }
 

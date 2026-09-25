@@ -17,7 +17,7 @@ else if(process.argv.includes('models')) console.log(${JSON.stringify(cursorList
   await chmod(path.join(temp,'bin/cursor-agent'),0o755);
   const now=Date.now();
   await writeFile(path.join(temp,'data/state.json'),JSON.stringify({projects:[{id:'p',name:'Model options',path:path.join(temp,'repo'),createdAt:now}],threads:[{id:'t',projectId:'p',provider:'codex',model:'fixture-model',mode:'supervised',title:'Model settings',messages:[{id:'u',role:'user',text:'Existing conversation',createdAt:now}],createdAt:now,updatedAt:now}]}));
-  app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:path.join(temp,'data'),CODEX_HOME:path.join(temp,'codex'),PATH:`${path.join(temp,'bin')}:${process.env.PATH}`}});
+  app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:path.join(temp,'data'),CODEX_HOME:path.join(temp,'codex'),PATH:`${path.join(temp,'bin')}:${process.env.PATH}`}});
   const page=await app.firstWindow(); const errors=[]; page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:'Reasoning effort',exact:true}).click();

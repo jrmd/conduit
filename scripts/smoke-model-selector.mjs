@@ -23,7 +23,7 @@ try {
   execFileSync('git', ['commit', '-m', 'Model picker fixture'], { cwd: projectDir, stdio: 'ignore' });
 
   app = await electron.launch({
-    executablePath: path.join(root, 'release', 'linux-unpacked', 'j2code'),
+    executablePath: path.join(root, 'release', 'linux-unpacked', 'conduit'),
     args: [],
     env: { ...process.env, J2CODE_DATA_DIR: dataDir, ELECTRON_DISABLE_SECURITY_WARNINGS: 'true' },
     timeout: 30_000,

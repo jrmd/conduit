@@ -19,14 +19,18 @@ try {
   await writeFile(path.join(repo, 'picker.ts'), "export const placeholder = 'Find a project';\n");
   const now = Date.now();
   await writeFile(path.join(data, 'state.json'), JSON.stringify({
-    projects:[{id:'p',name:'Vulp',path:repo,createdAt:now},{id:'p2',name:'Second project',path:temp,createdAt:now}], disabledProviders:[],
+    projects:[{id:'p',name:'Conduit',path:repo,createdAt:now},{id:'p2',name:'Second project',path:temp,createdAt:now}], disabledProviders:[],
     threads:[{id:'t',projectId:'p',provider:'codex',mode:'read',title:'Project picker',branch:'main',createdAt:now,updatedAt:now,
       messages:[{id:'u',role:'user',text:'Can we make the project picker easier to use?',createdAt:now},
         {id:'a',role:'assistant',text:'The picker now keeps the current project at the top. Search sits underneath, and “Open folder” stays at the bottom.\n\nI also tightened the spacing so longer folder names fit without pushing the menu wider.',createdAt:now+2}],
       activity:[{id:'check',runId:'fixture',kind:'tool',title:'Read project picker',detail:'Sample activity for the renderer test.',status:'completed',createdAt:now+1,updatedAt:now+1}]}]
   }));
-  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
+  app = await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:data}});
   const page = await app.firstWindow(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+  await expect(page).toHaveTitle('Conduit');
+  expect(await app.evaluate(({app}) => app.getName())).toBe('Conduit');
+  await expect(page.locator('.brand')).toHaveText('Conduit');
+  await expect.poll(() => page.locator('.conduit-brand-logo').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:'Agent settings',exact:true}).click();
   await page.getByRole('button',{name:'Light',exact:true}).click();
@@ -96,11 +100,11 @@ try {
   await page.getByRole('button',{name:'Select model',exact:true}).click();
 
   await expect(page.locator('.empty-conversation').getByRole('heading',{name:/What should we build in/})).toBeVisible();
-  await page.getByRole('button',{name:'Switch project from Vulp',exact:true}).click();
+  await page.getByRole('button',{name:'Switch project from Conduit',exact:true}).click();
   await page.getByRole('dialog',{name:'Switch project'}).getByRole('button',{name:/Second project/}).click();
   await expect(page.getByRole('button',{name:'Switch project from Second project',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Switch project from Second project',exact:true}).click();
-  await page.getByRole('dialog',{name:'Switch project'}).getByRole('button',{name:/Vulp/}).click();
+  await page.getByRole('dialog',{name:'Switch project'}).getByRole('button',{name:/Conduit/}).click();
   await page.screenshot({path:path.join(root,'artifacts/quiet-focus-app-new-thread.png')});
   await page.getByRole('button',{name:'Agent settings',exact:true}).click();
   const tabs = page.getByRole('tablist',{name:'Settings sections'});

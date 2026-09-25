@@ -303,7 +303,7 @@ export async function discoverModels(provider: ProviderId): Promise<ModelCatalog
     const timer = setTimeout(() => controller.abort(), 10000);
     const rpc = new ProviderRpc(executable, ['--acp', '--stdio'], homedir(), providerEnvironment(), controller.signal);
     try {
-      await rpc.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'vulp', version: '0.5.0' } });
+      await rpc.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'conduit', version: '0.5.0' } });
       const session = await rpc.request('session/new', { cwd: homedir(), mcpServers: [] });
       const options = parseCopilotModels(session);
       return { provider, options, warning: options.length ? undefined : 'Copilot did not advertise models. Use CLI default or enter a model ID. Sign in with copilot login if needed.' };

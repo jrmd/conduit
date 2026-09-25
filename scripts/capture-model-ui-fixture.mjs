@@ -52,7 +52,7 @@ try {
   await writeFile(path.join(dataDir, 'state.json'), JSON.stringify({ projects: [projectOne, projectTwo], threads: [threadOne, threadTwo] }, null, 2));
 
   app = await electron.launch({
-    executablePath: process.env.J2CODE_SMOKE_PACKAGED ? path.join(root, 'release', 'linux-unpacked', 'j2code') : path.join(root, 'node_modules', '.bin', 'electron'),
+    executablePath: process.env.J2CODE_SMOKE_PACKAGED ? path.join(root, 'release', 'linux-unpacked', 'conduit') : path.join(root, 'node_modules', '.bin', 'electron'),
     args: [...(process.env.J2CODE_SMOKE_PACKAGED ? [] : [root]), `--user-data-dir=${path.join(tempRoot, 'electron')}`],
     env: { ...process.env, J2CODE_DATA_DIR: dataDir, ELECTRON_DISABLE_SECURITY_WARNINGS: 'true' },
     timeout: 30_000,

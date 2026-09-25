@@ -12,7 +12,7 @@ try {
   await chmod(path.join(temp,'bin/copilot'),0o755);
   const now=Date.now();
   await writeFile(path.join(temp,'data/state.json'),JSON.stringify({projects:[{id:'p',name:'Copilot project',path:path.join(temp,'repo'),createdAt:now}],threads:[{id:'t',projectId:'p',provider:'copilot',mode:'supervised',title:'Copilot conversation',messages:[],createdAt:now,updatedAt:now}]}));
-  app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:path.join(temp,'data'),PATH:`${path.join(temp,'bin')}:${process.env.PATH}`}});
+  app=await electron.launch({executablePath:path.join(root,process.env.J2CODE_SMOKE_PACKAGED?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(process.env.J2CODE_SMOKE_PACKAGED?[]:[root]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,J2CODE_DATA_DIR:path.join(temp,'data'),PATH:`${path.join(temp,'bin')}:${process.env.PATH}`}});
   const page=await app.firstWindow();const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width:1440,height:900});
   await page.getByTestId('model-selector').click();

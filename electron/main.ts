@@ -18,9 +18,9 @@ import { commitContext, createPullRequest, gitCommit, gitDiff, gitPush, gitStatu
 import { discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
 import type { AppEvent, CommitInput, CommitMessageInput, PRInput, ProviderId, ProviderInfo, Snapshot, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
 
-// Keep the existing workspace and Electron profile across the Vulp rename.
+// Keep the existing workspace and Electron profile across the Conduit rename.
 if (!process.env.J2CODE_DATA_DIR && !app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'j2code'));
-app.setName('Vulp');
+app.setName('Conduit');
 
 let win: BrowserWindow | null = null;
 let providers: ProviderInfo[] = [];
@@ -343,7 +343,7 @@ function registerIpc() {
 async function createWindow() {
   win = new BrowserWindow({
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 20 } } : {}),
-    title: 'Vulp', width: 1440, height: 900, minWidth: 850, minHeight: 600,
+    title: 'Conduit', width: 1440, height: 900, minWidth: 850, minHeight: 600,
     backgroundColor: '#070c15', autoHideMenuBar: true, icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true }
   });
@@ -364,9 +364,10 @@ async function createWindow() {
 const singleInstance = app.requestSingleInstanceLock();
 if (!singleInstance) app.quit();
 else app.whenReady().then(async () => {
+  app.dock?.setIcon(path.join(__dirname, '..', 'assets', 'icon.png'));
   try { await store.load(); }
   catch (error) {
-    dialog.showErrorBox('Vulp could not open its data', `The data file at ${dataFile} could not be read: ${error instanceof Error ? error.message : String(error)}\n\nVulp will close without changing the file.`);
+    dialog.showErrorBox('Conduit could not open its data', `The data file at ${dataFile} could not be read: ${error instanceof Error ? error.message : String(error)}\n\nConduit will close without changing the file.`);
     app.quit();
     return;
   }

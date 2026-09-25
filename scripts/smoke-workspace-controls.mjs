@@ -9,7 +9,7 @@ const reply = 'Fixture: the answer is 437.\n\n## Verification\n\nThe command com
 let app,page;
 async function launch(){
  const packaged=process.env.J2CODE_SMOKE_PACKAGED;
- app=await electron.launch({executablePath:path.join(root,packaged?'release/linux-unpacked/vulp':'node_modules/.bin/electron'),args:[...(packaged?[]:[root]),`--user-data-dir=${path.join(temp,'electron')}`],env:{...process.env,J2CODE_DATA_DIR:data,CODEX_HOME:home,PATH:`${bin}:${process.env.PATH}`}});
+ app=await electron.launch({executablePath:path.join(root,packaged?'release/linux-unpacked/conduit':'node_modules/.bin/electron'),args:[...(packaged?[]:[root]),`--user-data-dir=${path.join(temp,'electron')}`],env:{...process.env,J2CODE_DATA_DIR:data,CODEX_HOME:home,PATH:`${bin}:${process.env.PATH}`}});
  page=await app.firstWindow();await expect(page.getByTestId('model-selector')).toBeVisible();await page.setViewportSize({width:1440,height:900});
 }
 async function model(id){await page.getByTestId('model-selector').click();await page.getByRole('tab',{name:'Codex',exact:true}).click();await page.getByRole('button',{name:new RegExp(`^${id} ${id}$`)}).click();}
@@ -46,7 +46,7 @@ emit({type:'turn.completed'});
  for(const name of ['codex','claude']){await writeFile(path.join(bin,name),fixture);await chmod(path.join(bin,name),0o755)}
  const now=Date.now();await writeFile(path.join(data,'state.json'),JSON.stringify({projects:[{id:'p',name:'Fixture workspace',path:folder,createdAt:now},{id:'p2',name:'Second project',path:folder,createdAt:now}],threads:[{id:'t',projectId:'p',provider:'codex',mode:'read',title:'Empty saved thread',messages:[],createdAt:now,updatedAt:now}],disabledProviders:['cursor','opencode']}));
  await launch();
- await expect(page).toHaveTitle('Vulp');
+ await expect(page).toHaveTitle('Conduit');
  const appInfo=await page.evaluate(()=>window.j2code.getAppInfo());
  await expect(page.locator('.app-version')).toHaveText(`v${appInfo.version}`);
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Keep this draft');
@@ -84,7 +84,7 @@ emit({type:'turn.completed'});
  await page.waitForTimeout(100);const stillTime=await shaderTime();await page.waitForTimeout(200);expect(await shaderTime()).toBe(stillTime);
  await page.screenshot({path:path.join(root,'artifacts','vulp-shader-1440.png')});
  await page.emulateMedia({reducedMotion:'no-preference'});await expect.poll(shaderTime).toBeGreaterThan(stillTime);
-await expect(page.getByText('One chat. Any model.',{exact:true})).toHaveCount(0);await expect(page.locator('.brand')).not.toContainText('Vulp');await page.screenshot({path:path.join(root,'artifacts','vulp-home-1440.png')});await page.getByRole('button',{name:'Explore this project'}).click();await expect(page.getByRole('textbox',{name:'Message',exact:true})).toContainText('Explain the architecture');await page.getByRole('textbox',{name:'Message',exact:true}).fill('');
+await expect(page.getByText('One chat. Any model.',{exact:true})).toHaveCount(0);await expect(page.locator('.brand')).not.toContainText('Conduit');await page.screenshot({path:path.join(root,'artifacts','vulp-home-1440.png')});await page.getByRole('button',{name:'Explore this project'}).click();await expect(page.getByRole('textbox',{name:'Message',exact:true})).toContainText('Explain the architecture');await page.getByRole('textbox',{name:'Message',exact:true}).fill('');
  await page.getByRole('button',{name:'Choose project',exact:true}).click();await page.screenshot({path:path.join(root,'artifacts','vulp-project-picker.png')});await page.getByRole('dialog',{name:'Switch project'}).getByRole('button',{name:/Second project/}).click();await expect(page.locator('.hero-project')).toContainText('Second project');await page.getByRole('button',{name:'Choose project',exact:true}).click();await page.getByRole('dialog',{name:'Switch project'}).getByRole('button',{name:/Fixture workspace/}).click();await page.locator('.thread-item').filter({hasText:'Empty saved thread'}).click();
  await page.locator('.thread-item').filter({hasText:'Empty saved thread'}).click({button:'right'});await expect(page.getByRole('menuitem',{name:'Delete thread…'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('menu')).toHaveCount(0);
  await app.evaluate(({Menu})=>{const original=Menu.prototype.popup;Menu.prototype.popup=function(options){globalThis.__contextRoles=this.items.map(item=>item.role);return original.call(this,options)}});

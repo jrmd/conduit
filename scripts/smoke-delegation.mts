@@ -27,7 +27,7 @@ for (const provider of (childOnly ? ['codex'] : process.argv.includes('--claude-
       continue;
     }
     const result = await runWithDelegation({provider,cwd,mode:'supervised',signal:controller.signal,onApproval:async()=>false,
-      prompt:`Use the Vulp delegation tools to spawn exactly one ${childProvider} child. Its task is: Read marker.txt in the working directory and return its exact contents. Do not read the file yourself or use native subagents. Use vulp_wait_agent repeatedly until completed. Reply with the exact marker returned by the child. If delegation fails, report the error.`,
+      prompt:`Use the Conduit delegation tools to spawn exactly one ${childProvider} child. Its task is: Read marker.txt in the working directory and return its exact contents. Do not read the file yourself or use native subagents. Use vulp_wait_agent repeatedly until completed. Reply with the exact marker returned by the child. If delegation fails, report the error.`,
       onEvent:event=>{
         if(event.kind==='text') text+=event.text;
         if(event.kind==='activity' && event.activity?.kind==='agent' && event.activity.provider) {
@@ -38,7 +38,7 @@ for (const provider of (childOnly ? ['codex'] : process.argv.includes('--claude-
       },
     },['codex','claude'],runProvider);
     assert.ok(result.sessionId);
-    assert.equal(children.size,1,`Expected a Vulp child; parent said: ${text}`);
+    assert.equal(children.size,1,`Expected a Conduit child; parent said: ${text}`);
     assert.equal([...children.values()][0].status,'completed',JSON.stringify([...children.values()]));
     assert.ok(text.includes(token),`Parent did not use the child's answer: ${text}`);
     console.log(`${provider} → ${childProvider}: live round trip passed`);

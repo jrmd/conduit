@@ -133,7 +133,7 @@ export class Delegation {
 export async function callProviderTool(tools: readonly ProviderTool[], name: string, args: unknown) {
   try {
     const tool = tools.find(tool => tool.name === name);
-    if (!tool) throw new Error(`Unknown Vulp tool: ${name}`);
+    if (!tool) throw new Error(`Unknown Conduit tool: ${name}`);
     const parsed = z.object(tool.schema).strict().parse(args);
     return { success: true, text: JSON.stringify(await tool.call(parsed)) };
   } catch (error) { return { success: false, text: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) }; }

@@ -29,9 +29,9 @@ export function createUpdates(isBusy: () => boolean) {
     checking = (async () => {
       let token: string;
       try { token = (await exec('gh',['auth','token','--hostname','github.com'],{timeout:10000,windowsHide:true,maxBuffer:16384})).stdout.trim(); }
-      catch { status={state:'error',message:'Sign in with gh auth login to access private Vulp releases.'}; return {...status}; }
+      catch { status={state:'error',message:'Sign in with gh auth login to access private Conduit releases.'}; return {...status}; }
       if(!token) {status={state:'error',message:'GitHub CLI returned no credentials. Sign in with gh auth login.'};return {...status};}
-      autoUpdater.setFeedURL({provider:'github',owner:'jrmd',repo:'vulp',private:true,token});
+      autoUpdater.setFeedURL({provider:'github',owner:'jrmd',repo:'conduit',private:true,token});
       try { await autoUpdater.checkForUpdates(); }
       catch { status={state:'error',message:'No update could be retrieved. Check GitHub access and that a release exists.'}; }
       return {...status};

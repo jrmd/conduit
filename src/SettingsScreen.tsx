@@ -60,7 +60,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       <nav className="settings-nav" role="tablist" aria-label="Settings sections">
         {tabs.map(([id, label], index) => <button key={id} role="tab" id={`settings-tab-${id}`} aria-selected={tab === id} aria-controls={`settings-panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => props.onTab(id)} onKeyDown={event => onTabKey(event, index)}>{label}</button>)}
       </nav>
-      <p className="settings-intro">Vulp <span>v{props.version}</span></p>
+      <p className="settings-intro">Conduit <span>v{props.version}</span></p>
 
       <section {...panel('appearance')}><div id="settings-appearance" className="appearance-settings">
         <h2>Appearance</h2><p>Choose a theme or follow your system.</p>
@@ -70,7 +70,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </div></section>
 
       <section {...panel('updates')}><div id="settings-updates" className="update-settings">
-        <div><strong>Vulp updates</strong><small>{updateMessage}</small></div>
+        <div><strong>Conduit updates</strong><small>{updateMessage}</small></div>
         <button className="ghost-button" disabled={['checking', 'downloading', 'unsupported'].includes(updateStatus.state)} onClick={() => run(async () => {
           if (updateStatus.state === 'ready') await window.j2code.installUpdate();
           else props.onUpdateStatus(await window.j2code.checkForUpdates());

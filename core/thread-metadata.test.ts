@@ -11,15 +11,15 @@ it('captures branch/repository independently of later checkout and persists summ
  const dir=await mkdtemp(path.join(tmpdir(),'vulp-thread-meta-'));
  try {
   execFileSync('git',['init','-b','feature/original'],{cwd:dir});
-  execFileSync('git',['remote','add','origin','git@github.com:jrmd/vulp.git'],{cwd:dir});
-  assert.deepEqual(await threadGitContext(dir),{branch:'feature/original',repository:'https://github.com/jrmd/vulp'});
+  execFileSync('git',['remote','add','origin','git@github.com:jrmd/conduit.git'],{cwd:dir});
+  assert.deepEqual(await threadGitContext(dir),{branch:'feature/original',repository:'https://github.com/jrmd/conduit'});
   const file=path.join(dir,'state.json'),store=new Store(file);await store.load();const project=await store.addProject(dir);const thread=await store.createThread(project.id,'codex','read');
   await store.updateThread(thread.id,{...await threadGitContext(dir),branches:['feature/original'],summary:'Fixed the parser.',settled:true});
   execFileSync('git',['checkout','--orphan','feature/later'],{cwd:dir});
   const reopened=new Store(file);await reopened.load();const saved=reopened.getThread(thread.id);
   assert.equal(saved.branch,'feature/original');assert.equal(saved.settled,true);assert.equal(saved.summary,'Fixed the parser.');
   assert.equal((await threadGitContext(dir)).branch,'feature/later');
-  execFileSync('git',['remote','set-url','origin','https://credential@github.com/jrmd/vulp.git'],{cwd:dir});
+  execFileSync('git',['remote','set-url','origin','https://credential@github.com/jrmd/conduit.git'],{cwd:dir});
   assert.equal((await threadGitContext(dir)).repository,undefined);
  } finally {await rm(dir,{recursive:true,force:true})}
 });

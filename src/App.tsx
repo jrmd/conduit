@@ -424,7 +424,7 @@ export default function App() {
         }
         setProjectToRemove(null);
         setDialog(null);
-        notify('Project removed from Vulp');
+        notify('Project removed from Conduit');
         return;
       }
       if (!projectId) return;
@@ -560,7 +560,7 @@ export default function App() {
     </div>}
     <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <div className="sidebar-top">
-        <div className="brand" title="Vulp"><img className="vulp-brand-logo" src="./vulp-mark.png" alt="" /><span>vulp</span></div>
+        <div className="brand" title="Conduit"><img className="conduit-brand-logo" src="./conduit-mark.png" alt="" /><span>Conduit</span></div>
         <button className="icon-button sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={() => setSidebarCollapsed(true)}><PanelLeftClose size={17}/></button>
         <button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={17} /></button>
       </div>
@@ -606,7 +606,7 @@ export default function App() {
       <div className="work-area">
         <section className="conversation">
           {loading ? <div className="center-state"><LoaderCircle className="spin" size={24} /><p>Opening workspace…</p></div>
-            : !activeProject ? <div className="welcome-state"><JrmdShader theme={theme}/><img className="vulp-hero-logo" src="./vulp-mark.png" alt="Vulp fox" /><h1>Open a project</h1><p>Choose a local folder to start working with a coding agent.</p><button className="primary-button" onClick={pickProject}><Plus size={15} /> Open folder</button></div>
+            : !activeProject ? <div className="welcome-state"><JrmdShader theme={theme}/><img className="conduit-hero-logo" src="./conduit-mark.png" alt="Conduit logo" /><h1>Open a project</h1><p>Choose a local folder to start working with a coding agent.</p><button className="primary-button" onClick={pickProject}><Plus size={15} /> Open folder</button></div>
             : activeThread && activeThread.messages.length > 0 ? <div className="messages-scroll" ref={messagesScrollRef} onScroll={event => { const el = event.currentTarget; nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90; }}><div className="messages-inner">
               {activeThread.messages.map((message, index) => <Fragment key={message.id}><div className={`message message-${message.role}`}>
                 <div className={`message-avatar ${message.role === 'assistant' ? 'agent-avatar' : ''}`}>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : <Terminal size={15} />}</div>
@@ -708,7 +708,7 @@ export default function App() {
       {dialog === 'push' && <p>Push <strong>{git.branch}</strong> to <strong>{git.pushTarget || 'an upstream branch'}</strong>. {git.ahead > 0 ? `${git.ahead} commit${git.ahead === 1 ? '' : 's'} ahead.` : ''}</p>}
       {dialog === 'pr' && <><p>Open a pull request for <strong>{git.branch}</strong>. {!git.pushTarget ? 'Configure an upstream branch first.' : git.ahead > 0 ? `Push ${git.ahead} local commit${git.ahead === 1 ? '' : 's'} before creating the pull request.` : `Branch is pushed to ${git.pushTarget}.`}</p><label className="field-label" htmlFor="pr-title">Title</label><input id="pr-title" autoFocus value={prTitle} onChange={event => setPrTitle(event.target.value)} placeholder="What does this change?" /><label className="field-label" htmlFor="pr-body">Description</label><textarea id="pr-body" value={prBody} onChange={event => setPrBody(event.target.value)} placeholder="Add context for reviewers…" rows={5} /><label className="draft-toggle"><input type="checkbox" checked={prDraft} onChange={event => setPrDraft(event.target.checked)} /><span>Open as draft</span></label></>}
       {dialog === 'delete' && <p>Delete <strong>{activeThread?.title || 'this thread'}</strong>? The conversation will be removed from this workspace.</p>}
-      {dialog === 'removeProject' && <p>Remove <strong>{projectToRemove?.name}</strong> from Vulp? Its conversations will be removed from the app. The folder and files stay on disk.</p>}
+      {dialog === 'removeProject' && <p>Remove <strong>{projectToRemove?.name}</strong> from Conduit? Its conversations will be removed from the app. The folder and files stay on disk.</p>}
 
       <div className="dialog-actions"><button className="ghost-button" onClick={() => setDialog(null)}>Cancel</button><button className={`primary-button ${dialog === 'delete' || dialog === 'removeProject' ? 'danger-button' : ''}`} onClick={performAction} disabled={busy || (dialog === 'push' && !git.pushTarget) || (dialog === 'pr' && (!prTitle.trim() || !git.pushTarget || git.ahead > 0))}>{busy ? <LoaderCircle size={16} className="spin" /> : dialog === 'push' ? <ArrowUp size={16} /> : dialog === 'pr' ? <GitPullRequest size={16} /> : dialog === 'removeProject' ? <Folder size={16} /> : <Trash2 size={16} />}{dialog === 'push' ? 'Push branch' : dialog === 'pr' ? 'Create PR' : dialog === 'removeProject' ? 'Remove project' : 'Delete thread'}</button></div></div></div>}
     {toast && <div className={`toast toast-${toast.kind}`}>{toast.kind === 'success' ? <CircleCheck size={17} /> : <CircleAlert size={17} />}{toast.text}<button onClick={() => setToast(null)} aria-label="Dismiss"><X size={14} /></button></div>}

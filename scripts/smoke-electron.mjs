@@ -27,7 +27,7 @@ async function waitForText(page, text) {
 async function launchApp() {
   const instance = await electron.launch({
     executablePath: packaged
-      ? path.join(root, 'release', 'linux-unpacked', 'j2code')
+      ? path.join(root, 'release', 'linux-unpacked', 'conduit')
       : path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron'),
     args: packaged ? [] : [root],
     env: {

@@ -97,4 +97,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "Vulp $RELEASE_TAG" --generate-notes
+        run: gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "Conduit $RELEASE_TAG" --generate-notes
