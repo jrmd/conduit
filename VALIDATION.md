@@ -157,3 +157,9 @@ Validation: typecheck, all 63 unit tests, production build, Linux unpacked packa
 Replaced the supplied bitmap with a simplified transparent vector derivative and 1024px PNG export. Increased sidebar logo size and logo/text spacing, removed negative wordmark tracking, and moved the project label onto its own row above the conversation title and branch/provider metadata. Hover actions remain aligned with the conversation/status row.
 
 Typecheck and production build passed. The sidebar Electron fixture smoke passed with checks for the three-row order and wordmark spacing, plus existing hover, tooltip, pin/settle, persistence, branch-change, light/dark and 1440/850/430 viewport coverage. Desktop and mobile screenshots were inspected. These are Linux renderer checks, not native macOS Dock verification.
+
+## macOS sidebar header spacing (2026-09-25)
+
+The macOS title bar keeps its 56px single-row layout and 94px native-control inset. Mac branding uses a 22px logo, 17px wordmark, and 8px logo/text gap to leave breathing room before the sidebar control. The collapsed sidebar retains the 94px top-bar inset.
+
+`node scripts/smoke-mac-header.mjs` loads the real renderer with a mocked macOS app-info response. It checks single-row height, native-control clearance, at least 16px between branding and sidebar control, vertical alignment, 1440/850/430 widths, overflow, and collapsed control clearance. This is a renderer layout check; native macOS traffic lights and dragging are not exercised.

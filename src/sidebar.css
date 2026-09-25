@@ -72,7 +72,11 @@ html[data-theme] .quiet-focus .settled-card .session-actions { top:50%; transfor
 html[data-theme] .quiet-focus .sidebar-footer { border:0; height:46px; min-height:46px; margin:0 14px; padding:0; }
 html[data-theme] .quiet-focus .sidebar :is(button,input):focus-visible { outline:2px solid color-mix(in srgb,var(--q-accent) 70%,transparent); outline-offset:1px; }
 html[data-theme] .quiet-focus .sidebar .icon-button:disabled { opacity:.35; cursor:default; }
+/* Compact branding shares the title bar with the native traffic lights. */
 html[data-theme] .quiet-focus.platform-darwin .sidebar-top { padding-left:94px; }
+html[data-theme] .quiet-focus.platform-darwin .brand { gap:8px; flex-shrink:0; }
+html[data-theme] .quiet-focus.platform-darwin .brand>span { font-size:17px; letter-spacing:.1px; }
+html[data-theme] .quiet-focus.platform-darwin .conduit-brand-logo { width:22px; height:22px; }
 
 .thread-preview { position:fixed; z-index:100; box-sizing:border-box; width:260px; padding:13px; display:flex; flex-direction:column; gap:10px; border:1px solid var(--q-line); border-radius:10px; color:var(--q-muted); background:var(--q-paper); box-shadow:var(--q-shadow); font-size:12px; max-height:204px; overflow:auto; }
 .thread-preview strong { color:var(--q-text); font-size:13px; line-height:18px; font-weight:500; overflow-wrap:anywhere; max-height:54px; overflow:hidden; }
