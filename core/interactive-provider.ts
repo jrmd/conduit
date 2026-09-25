@@ -4,6 +4,17 @@ import { prepareAttachments } from "./attachments";
 import { ProviderRpc } from "./provider-rpc";
 import { createActivityParser } from "./activity";
 import { createClaudeTextStream } from "./response-stream";
+import { z } from 'zod';
+import { callProviderTool, type ProviderTool } from './delegation';
+
+export async function createClaudeToolServer(tools: readonly ProviderTool[]) {
+  const { createSdkMcpServer, tool } = await import('@anthropic-ai/claude-agent-sdk');
+  return createSdkMcpServer({ name: 'vulp', version: '1.0.0', tools: tools.map(definition =>
+    tool(definition.name, definition.description, definition.schema, async args => {
+      const result = await callProviderTool(tools, definition.name, args);
+      return { content: [{ type: 'text' as const, text: result.text }], isError: !result.success };
+    }, { alwaysLoad: true })) });
+}
 
 export function codexPermissions(mode: ReturnType<typeof approvalMode>) {
   return { sandbox: mode === "full-access" ? "danger-full-access" : mode === "supervised" ? "read-only" : "workspace-write",
@@ -13,7 +24,7 @@ export function codexPermissions(mode: ReturnType<typeof approvalMode>) {
 
 export async function runInteractiveProvider(input: RunProviderArgs, executable: string, env: NodeJS.ProcessEnv): Promise<{sessionId?:string}> {
   const mode = approvalMode(input.mode || "supervised");
-  const ask = (title:string, detail:unknown) => input.signal.aborted ? Promise.resolve(false) : input.onApproval?.(title,typeof detail === "string" ? detail : JSON.stringify(detail,null,2)) || Promise.resolve(false);
+  const ask = (title:string, detail:unknown) => input.signal.aborted || input.readOnlyChild ? Promise.resolve(false) : input.onApproval?.(title,typeof detail === "string" ? detail : JSON.stringify(detail,null,2)) || Promise.resolve(false);
   const {text,images} = prepareAttachments(input.provider,input.prompt,input.attachments || []);
   if(input.provider === "claude") {
     const {query} = await import("@anthropic-ai/claude-agent-sdk");
@@ -25,14 +36,16 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
     const prompt = async function*() { yield {type:"user" as const,session_id:input.sessionId || "",parent_tool_use_id:null,message:{role:"user" as const,content}}; };
     const streamText = createClaudeTextStream(); const activity = createActivityParser("claude");
     let sessionId = input.sessionId;
+    const mcpServers = input.tools?.length ? { vulp: await createClaudeToolServer(input.tools) } : undefined;
     const run = query({prompt:prompt(),options:{cwd:input.cwd,env,pathToClaudeCodeExecutable:executable,abortController:controller,
       resume:input.sessionId,model:input.model,
-      settings:{fastMode:input.fastMode ?? false},includePartialMessages:true,settingSources:["user","project","local"],
+      settings:{fastMode:input.fastMode ?? false, ...(input.readOnlyChild ? {disableAllHooks:true} : {})},includePartialMessages:true,settingSources:input.readOnlyChild ? [] : ["user","project","local"],
       // Recent models omit thinking text unless a summarized display is requested.
-      extraArgs:{"thinking-display":"summarized",...(input.effort ? {effort:input.effort} : {})},
-      permissionMode:mode === "full-access" ? "bypassPermissions" : mode === "auto-edits" ? "acceptEdits" : mode === "auto" ? "auto" : "default",
-      allowDangerouslySkipPermissions:mode === "full-access",
-      canUseTool:async (name,params) => await ask(name,params) ? {behavior:"allow",updatedInput:params} : {behavior:"deny",message:"Denied by the user"},
+      extraArgs:{"thinking-display":"summarized",...(input.effort ? {effort:input.effort} : {}), ...(input.readOnlyChild ? {'strict-mcp-config':null} : {})},
+      ...(input.readOnlyChild ? {tools:['Read','Glob','Grep'], allowedTools:['Read','Glob','Grep'], disallowedTools:['Agent','Task','Bash','Write','Edit','NotebookEdit']} : {mcpServers, allowedTools:input.tools?.map(t=>`mcp__vulp__${t.name}`)}),
+      permissionMode:input.readOnlyChild ? 'default' : mode === "full-access" ? "bypassPermissions" : mode === "auto-edits" ? "acceptEdits" : mode === "auto" ? "auto" : "default",
+      allowDangerouslySkipPermissions:!input.readOnlyChild && mode === "full-access",
+      canUseTool:async (name,params) => await ask(name,params) ? {behavior:"allow",updatedInput:params} : {behavior:"deny",message:input.readOnlyChild ? 'Read-only child: action denied' : "Denied by the user"},
     }});
     try {
       for await(const message of run) {
@@ -74,7 +87,7 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
         const delta=method==="item/reasoning/summaryPartAdded" ? (p.summaryIndex > 0 ? "\n\n" : "") : p.delta || "";
         if(delta) input.onEvent({kind:"activity",text:"Thinking",activity:{id:p.itemId,kind:"reasoning",title:"Thinking",detail:delta,status:"running",append:true}});
       }
-      if(method==="turn/completed") { if(p.turn?.status==="failed") rejectTurn(new Error(p.turn.error?.message || "Codex turn failed")); else resolveTurn(); }
+      if(method==="turn/completed") { if(p.turn?.status==="failed" || p.turn?.status==="interrupted") rejectTurn(new Error(p.turn.error?.message || `Codex turn ${p.turn.status}`)); else resolveTurn(); }
     } else if(method==="session/update") {
       const u=p.update;
       if(u?.sessionUpdate==="agent_message_chunk" && u.content?.type==="text") { settleThought(); input.onEvent({kind:"text",text:u.content.text,sessionId}); }
@@ -90,6 +103,12 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
     }
   };
   rpc.onRequest=async (method,p)=>{
+    if(codex && method==="item/tool/call") {
+      const result = p.threadId !== sessionId || input.signal.aborted
+        ? {success:false,text:'Tool call does not belong to an active parent session'}
+        : await callProviderTool(input.tools || [],p.tool,p.arguments);
+      return {success:result.success,contentItems:[{type:'inputText',text:result.text}]};
+    }
     if(codex && ["item/commandExecution/requestApproval","item/fileChange/requestApproval"].includes(method)) {
       const item=items.get(p.itemId);
       const detail=method.includes("fileChange") ? (item?.changes || []).map((change:any)=>`${change.path}\n${change.diff || JSON.stringify(change.kind)}`).join("\n\n") || p.reason || "File changes requested" : [p.command,p.cwd && `Working directory: ${p.cwd}`,p.reason,p.networkApprovalContext && JSON.stringify(p.networkApprovalContext),p.additionalPermissions && JSON.stringify(p.additionalPermissions)].filter(Boolean).join("\n\n");
@@ -111,8 +130,16 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
   try {
     if(codex) {
       await rpc.request("initialize",{clientInfo:{name:"vulp",version:"0.5.0"},capabilities:{experimentalApi:true}});rpc.notify("initialized");
-      const permissions=codexPermissions(mode);
-      const result=await rpc.request(sessionId?"thread/resume":"thread/start",{...(sessionId?{threadId:sessionId}:{}),cwd:input.cwd,model:input.model,...permissions, config:input.contextWindow === undefined ? {} : {model_context_window:input.contextWindow}});
+      const permissions=input.readOnlyChild ? {sandbox:'read-only',approvalPolicy:'never',approvalsReviewer:'user'} : codexPermissions(mode);
+      const config: Record<string, unknown> = input.contextWindow === undefined ? {} : {model_context_window:input.contextWindow};
+      if(input.readOnlyChild) {
+        // MCP tools and native delegation are outside the filesystem sandbox.
+        const effective = await rpc.request('config/read',{cwd:input.cwd,includeLayers:false});
+        for(const name of Object.keys(effective.config?.mcp_servers || {})) config[`mcp_servers.${name}.enabled`] = false;
+        for(const feature of ['multi_agent','multi_agent_v2','apps','browser_use','browser_use_external','in_app_browser','computer_use']) config[`features.${feature}`] = false;
+      }
+      const dynamicTools=input.readOnlyChild ? undefined : input.tools?.map(t=>({type:'function',name:t.name,description:t.description,inputSchema:z.toJSONSchema(z.object(t.schema).strict()),deferLoading:false}));
+      const result=await rpc.request(sessionId?"thread/resume":"thread/start",{...(sessionId?{threadId:sessionId}:{dynamicTools}),cwd:input.cwd,model:input.model,...permissions, config});
       sessionId=result.thread.id;input.onEvent({kind:"status",text:"Session started",sessionId});prompting=true;
       await rpc.request("turn/start",{summary:"auto",threadId:sessionId,input:[{type:"text",text,text_elements:[]},...images.map(file=>({type:"localImage",path:file.path}))],effort:input.effort || null, serviceTierForTurn:input.fastMode ? "priority" : "default"});
       await finished;

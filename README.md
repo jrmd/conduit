@@ -9,6 +9,7 @@ A desktop workspace for Codex, Claude Code, Cursor, OpenCode, and GitHub Copilot
 - Per-model reasoning effort from capabilities advertised by the local CLI.
 - Four [approval modes](docs/approval-modes.md), selectable between turns, with inline permission requests. A running process keeps its current permissions. Provider selection locks after the first message.
 - Inline tools, public reasoning summaries, and delegated-agent activity when exposed by the CLI.
+- [Claude ↔ Codex delegation](docs/cross-provider-delegation.md) for read-only review and research, with live child activity and results returned to the parent.
 - Copy response, native text context menus, and project/thread context actions.
 - Selected-file commits, branch push, and pull requests through Git and `gh`.
 
@@ -61,7 +62,7 @@ For signed macOS releases, set repository variable `ENABLE_MAC_RELEASES=true` an
 
 The Vulp rename preserves the legacy `j2code` user-data directory and internal IPC/environment names so existing conversations remain available. `J2CODE_DATA_DIR` isolates test data and disables update checks. Attachment copies are retained in that data directory; deleting a conversation does not currently prune copies.
 
-Activity retains the last 500 entries per thread and up to 20 KB of detail per entry. Codex CLI JSON is supplemented by public events in the exact current session and explicitly linked child sessions. Raw hidden reasoning and unrelated session contents are not read. Other providers are limited to events their CLIs emit. Stopping a run stops its CLI process group; independent child-agent steering is not implemented.
+Activity retains the last 500 entries per thread and up to 20 KB of detail per entry. Codex CLI JSON is supplemented by public events in the exact current session and explicitly linked child sessions. Raw hidden reasoning and unrelated session contents are not read. Other providers are limited to events their CLIs emit. Stopping a run stops its CLI process group and its Vulp-managed children. Vulp children can be cancelled individually by the parent; follow-up messaging and independent UI steering are not implemented.
 
 ## Credits
 

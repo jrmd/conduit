@@ -1,4 +1,5 @@
 import { ProviderRpc } from './provider-rpc';
+import type { ProviderTool } from './delegation';
 import { runInteractiveProvider } from './interactive-provider';
 import { createClaudeTextStream } from './response-stream';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -23,6 +24,8 @@ export interface ProviderRunEvent {
 }
 
 export interface RunProviderArgs {
+  tools?: readonly ProviderTool[];
+  readOnlyChild?: boolean;
   attachments?: ResolvedAttachment[];
   provider: ProviderId;
   cwd: string;
@@ -377,7 +380,7 @@ export async function runProvider(input: RunProviderArgs): Promise<{ sessionId?:
   if (input.signal.aborted) throw new DOMException('The operation was aborted', 'AbortError');
   const startedAt = Date.now();
   let codexActivity: ReturnType<typeof watchCodexActivity> | undefined;
-  if (input.provider === 'copilot' || input.onApproval || (input.mode && !['read','edit'].includes(input.mode))) {
+  if (input.tools || input.readOnlyChild || input.provider === 'copilot' || input.onApproval || (input.mode && !['read','edit'].includes(input.mode))) {
     const executable = await findExecutable(input.provider);
     if (!executable) throw new Error(`${displayName(input.provider)} CLI not found`);
     return runInteractiveProvider(input, executable, providerEnvironment());
