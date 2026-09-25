@@ -583,3 +583,13 @@ button.icon-button{line-height:1}
 [data-theme=light] .composer-autocomplete { background:#fff; border-color:#d7e0e8; box-shadow:0 14px 40px #233e5a20; }
 [data-theme=light] .composer-autocomplete [role=option] { color:#38465b; }
 [data-theme=light] .composer-autocomplete [role=option][aria-selected=true] { background:#eaf1f8; color:#17283d; }
+
+.message-queue { max-height: 180px; overflow-y: auto; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--q-line); border-radius: 12px; font-size: 12px; }
+.queue-heading, .queued-message { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.queue-heading { margin-bottom: 6px; }
+.queued-message { padding: 5px 0; }
+.queued-message > span { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.queued-message button { display: grid; place-items: center; flex-shrink: 0; border: 0; border-radius: 5px; padding: 5px; color: var(--q-muted); background: transparent; }
+.queued-message button:hover { color: var(--q-text); background: var(--q-hover); }
+.steer-button, .queue-heading button { white-space: nowrap; flex-shrink: 0; color: var(--q-text); background: var(--q-paper); font-size: 12px; padding: 5px 8px; border: 1px solid var(--q-line); border-radius: 7px; }
+@media (max-width: 600px) { .composer .composer-bottom { flex-wrap: wrap; } .composer .composer-bottom > .model-wrap { flex-shrink: 0; } }

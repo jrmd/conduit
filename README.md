@@ -10,6 +10,7 @@ A desktop workspace for Codex, Claude Code, Cursor, OpenCode, and GitHub Copilot
 - Four [approval modes](docs/approval-modes.md), selectable between turns, with inline permission requests. A running process keeps its current permissions. Provider selection locks after the first message.
 - Inline tools, public reasoning summaries, and delegated-agent activity when exposed by the CLI.
 - [Claude ↔ Codex delegation](docs/cross-provider-delegation.md) for read-only review and research, with live child activity and results returned to the parent.
+- Queue follow-ups while an agent runs (Enter), or use **Steer now** (Alt+Enter) to interrupt and resume the same session with a correction. Pending messages persist across restarts; Stop pauses the queue, and queued messages can be removed or resumed. Steering starts a new turn in the existing session.
 - Copy response, native text context menus, and project/thread context actions.
 - Selected-file commits, branch push, and pull requests through Git and `gh`.
 

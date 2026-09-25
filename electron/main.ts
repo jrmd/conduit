@@ -19,7 +19,7 @@ import { Store } from '../core/store.js';
 import { validateThreadConfig } from '../core/thread-config';
 import { commitContext, createPullRequest, gitCommit, gitDiff, gitPush, gitStatus, currentBranch, threadGitContext, findThreadPR } from '../core/git.js';
 import { clearModelCatalogues, discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
-import type { AppEvent, CommitInput, CommitMessageInput, PRInput, ProviderId, ProviderInfo, Snapshot, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
+import type { AppEvent, CommitInput, CommitMessageInput, PRInput, ProviderId, ProviderInfo, Snapshot, SendOptions, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
 
 // Keep the existing workspace and Electron profile across the Conduit rename.
 if (!process.env.J2CODE_DATA_DIR && !app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'j2code'));
@@ -29,6 +29,9 @@ let win: BrowserWindow | null = null;
 let providers: ProviderInfo[] = [];
 const active = new Map<string, AbortController>();
 const starting = new Set<string>();
+const pausedQueues = new Set<string>();
+const steering = new Set<string>();
+let closing = false;
 const preparingWorkspaces = new Set<string>();
 const titling = new Map<string, AbortController>();
 const helpers = new Set<AbortController>();
@@ -52,7 +55,7 @@ const questions = new Questions(requests => emit({type:'questions',questions:req
 const approvals = new Approvals(requests => emit({type:'approvals',approvals:requests}));
 const snapshot = (): Snapshot => {
   const state = store.snapshot();
-  return { ...state, questions:questions.list(), approvals:approvals.list(), threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) })), providers };
+  return { ...state, questions:questions.list(), approvals:approvals.list(), threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) || starting.has(thread.id), queuePaused: pausedQueues.has(thread.id) || (!starting.has(thread.id) && !!thread.queuedMessages?.length) })), providers };
 };
 const emitSnapshot = () => emit({ type: 'snapshot', snapshot: snapshot() });
 const rendererFile = () => path.join(__dirname, 'renderer', 'index.html');
@@ -75,7 +78,7 @@ function workspacePath(projectId: unknown, threadId?: unknown) {
   return thread.workspace?.path || project.path;
 }
 
-async function runThread(threadId: string, prompt: string, files: ResolvedAttachment[] = [], references = '') {
+async function runThread(threadId: string, prompt: string, files: ResolvedAttachment[] = [], references = '', controller = new AbortController(), accepted?: () => void, queuedMessageId?: string) {
   const thread = store.getThread(threadId);
   const cwd = workspacePath(thread.projectId, threadId);
   const chosenModel = thread.model;
@@ -83,10 +86,12 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
   const modelSettings = await validateModelSettings(thread.provider, chosenModel, thread);
   const runId = randomUUID();
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
-  const controller = new AbortController();
   const context = await threadGitContext(cwd);
   await store.updateThread(threadId, { settled: false, branches: [...(thread.branches || []).filter(branch => branch !== context.branch), ...(context.branch ? [context.branch] : [])] });
-  await store.appendMessage(threadId, 'user', prompt, files.map(({path,data,...meta})=>meta));
+  controller.signal.throwIfAborted();
+  if (queuedMessageId && thread.queuedMessages?.[0]?.id !== queuedMessageId) return true;
+  await store.appendMessage(threadId, 'user', prompt, files.map(({path,data,...meta})=>meta), queuedMessageId);
+  accepted?.();
   active.set(threadId, controller);
   emitSnapshot();
   let text = '';
@@ -98,6 +103,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
     sessionWrite = sessionWrite.then(async () => { await store.updateThread(threadId, { sessionId: id }); })
       .catch(error => { emit({ type: 'provider', threadId, kind: 'error', text: `Could not save session: ${error instanceof Error ? error.message : String(error)}` }); });
   };
+  let succeeded = false;
   let receivedBrief = false;
   const savePlan = async (update: Partial<import('../shared/api').Plan>) => {
     if (controller.signal.aborted) return;
@@ -130,6 +136,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);
       else if (receivedBrief && thread.plan?.brief) await store.appendMessage(threadId, 'assistant', thread.plan.brief);
       else await store.appendMessage(threadId, 'system', 'The CLI completed without a text response.');
+      succeeded = !controller.signal.aborted;
     } catch (error) {
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);
       const message = controller.signal.aborted ? 'Run cancelled.' : error instanceof Error ? error.message : 'Provider failed';
@@ -138,11 +145,56 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
     } finally {
       if (flushTimer) clearTimeout(flushTimer);
       try { await planWrite; await store.finishActivity(threadId, runId, controller.signal.aborted); await sessionWrite; }
-      finally { questions.clear(threadId); approvals.clear(threadId); active.delete(threadId); emitSnapshot(); }
+      finally { questions.clear(threadId); approvals.clear(threadId); active.delete(threadId); emit({ type: 'run-finished', threadId }); emitSnapshot(); }
     }
   })().catch(error => emit({ type: 'provider', threadId, kind: 'error', text: error instanceof Error ? error.message : 'Unable to save provider result' }));
   runs.add(task);
-  void task.then(() => runs.delete(task));
+  await task;
+  runs.delete(task);
+  return succeeded;
+}
+
+// Own the queue in the main process so switching threads or reloading the UI cannot lose work.
+// Persist pending messages; after an app restart they wait for an explicit Resume.
+function startQueue(id: string) {
+  if (closing || starting.has(id) || pausedQueues.has(id)) return;
+  starting.add(id);
+  const task = (async () => {
+    try {
+      while (!closing && !pausedQueues.has(id)) {
+        const thread = store.getThread(id);
+        const message = thread.queuedMessages?.[0];
+        if (!message) break;
+        if (store.snapshot().disabledProviders.includes(thread.provider)) throw new Error('Enable this provider before resuming the queue');
+        const controller = new AbortController();
+        active.set(id, controller);
+        emitSnapshot();
+        const context = await resolveReferences(workspacePath(thread.projectId, id), thread.provider, message.references, message.text);
+        const files = await attachments.resolve(message.attachments);
+        prepareAttachments(thread.provider, message.text, files);
+        controller.signal.throwIfAborted();
+        // A removed or reprioritized entry must not be dispatched after asynchronous preparation.
+        if (thread.queuedMessages?.[0]?.id !== message.id) continue;
+        const first = !thread.messages.some(item => item.role === 'user');
+        const succeeded = await runThread(id, message.text, files, context, controller, () => {
+          if (first) void generateTitle(id, message.title?.provider || thread.provider, message.title?.model ?? thread.model).catch(error => emit({ type: 'provider', threadId: id, kind: 'status', text: `Title generation failed: ${String(error)}` }));
+        }, message.id);
+        if (!steering.delete(id) && !succeeded) pausedQueues.add(id);
+      }
+    } catch (error) {
+      if (steering.delete(id) && !pausedQueues.has(id) && !closing) {
+        // Steering during preparation keeps the original entry queued behind the correction.
+      } else {
+        pausedQueues.add(id);
+        emit({ type: 'provider', threadId: id, kind: 'error', text: error instanceof Error ? error.message : String(error) });
+      }
+    } finally {
+      active.delete(id); starting.delete(id); emitSnapshot();
+      if (!closing && !pausedQueues.has(id) && store.getThread(id).queuedMessages?.length) startQueue(id);
+    }
+  })();
+  runs.add(task);
+  void task.finally(() => runs.delete(task));
 }
 
 function assertUtilityProvider(provider: ProviderId, purpose: string) {
@@ -324,28 +376,34 @@ function registerIpc() {
     if (active.has(id) || starting.has(id)) throw new Error('Cancel the run before deleting this thread');
     titling.get(id)?.abort(); await store.deleteThread(id); emitSnapshot();
   });
-  handle('send', async (threadId: unknown, prompt: unknown, ids: unknown, options: { title?: { provider: ProviderId; model?: string }; references?: string[] } = {}) => {
+  handle('send', async (threadId: unknown, prompt: unknown, ids: unknown, options: SendOptions = {}) => {
     const id = assertId(threadId), value = assertText(prompt, 50_000).trim();
     if (!value) throw new Error('Enter a message');
-    if (store.snapshot().disabledProviders.includes(store.getThread(id).provider)) throw new Error('Enable this provider in Settings first');
-    if (active.has(id) || starting.has(id)) throw new Error('This thread is already running');
+    const thread = store.getThread(id);
+    if (store.snapshot().disabledProviders.includes(thread.provider)) throw new Error('Enable this provider in Settings first');
     if (preparingWorkspaces.size) throw new Error('Wait for workspace setup to finish');
-    starting.add(id);
-    try {
-      const thread = store.getThread(id);
-      const first = !thread.messages.some(message => message.role === 'user');
-      const refs = options?.references || [];
-      if (!Array.isArray(refs) || refs.length > 30 || refs.some(ref => typeof ref !== 'string' || ref.length > 4000)) throw new Error('Invalid references');
-      const context = await resolveReferences(workspacePath(thread.projectId, id), thread.provider, refs, value);
-      const files = await attachments.resolve(ids); prepareAttachments(thread.provider,value,files);
-      await runThread(id, value, files, context);
-      if (first) void generateTitle(id, options?.title?.provider || thread.provider, options?.title?.model ?? thread.model).catch(error => {
-        emit({ type: 'provider', threadId: id, kind: 'status', text: `Title generation failed; keeping the message title. ${error instanceof Error ? error.message : String(error)}` });
-      });
-    }
-    finally { starting.delete(id); }
+    if (options.delivery && !['queue', 'steer'].includes(options.delivery)) throw new Error('Invalid delivery mode');
+    const refs = options.references || [];
+    if (!Array.isArray(refs) || refs.length > 30 || refs.some(ref => typeof ref !== 'string' || ref.length > 4000)) throw new Error('Invalid references');
+    const files = await attachments.resolve(ids); prepareAttachments(thread.provider, value, files);
+    if ((thread.queuedMessages?.length || 0) >= 50) throw new Error('Queue is full (50 messages)');
+    const wasPaused = !!thread.queuedMessages?.length && (pausedQueues.has(id) || !starting.has(id));
+    const message = { id: randomUUID(), text: value, attachments: files.map(file => file.id), references: refs, title: options.title };
+    await store.updateThread(id, { queuedMessages: options.delivery === 'steer' ? [message, ...(thread.queuedMessages || [])] : [...(thread.queuedMessages || []), message] });
+    if (options.delivery === 'steer' || !wasPaused) pausedQueues.delete(id); else pausedQueues.add(id);
+    if (options.delivery === 'steer' && starting.has(id)) { steering.add(id); active.get(id)?.abort(); }
+    emitSnapshot();
+    startQueue(id);
   });
-  handle('cancel', async (threadId: unknown) => { active.get(assertId(threadId))?.abort(); });
+  handle('remove-queued-message', async (threadId: unknown, messageId: unknown) => {
+    const id = assertId(threadId), message = assertId(messageId);
+    await store.updateThread(id, { queuedMessages: (store.getThread(id).queuedMessages || []).filter(item => item.id !== message) });
+    emitSnapshot();
+  });
+  handle('resume-queue', (threadId: unknown) => { const id = assertId(threadId); store.getThread(id); pausedQueues.delete(id); startQueue(id); });
+  handle('cancel', (threadId: unknown) => {
+    const id = assertId(threadId); pausedQueues.add(id); steering.delete(id); active.get(id)?.abort(); emitSnapshot();
+  });
   handle('workspace-info', async (projectId: unknown) => workspaceInfo(store.getProject(assertId(projectId)).path));
   handle('project-branch', async (projectId: unknown) => currentBranch(store.getProject(assertId(projectId)).path));
   handle('git-status', async (projectId: unknown, threadId?: unknown) => gitStatus(workspacePath(projectId, threadId)));
@@ -410,6 +468,7 @@ let finishing = false;
 app.on('before-quit', event => {
   if (finishing || !runs.size) return;
   event.preventDefault();
+  closing = true;
   for (const controller of [...active.values(), ...titling.values(), ...helpers]) controller.abort();
   void Promise.allSettled([...runs]).then(() => { finishing = true; app.quit(); });
 });

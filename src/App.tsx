@@ -243,6 +243,10 @@ export default function App() {
     let mounted = true;
     const off = window.j2code.onEvent(event => {
       if (!mounted) return;
+      if (event.type === 'run-finished') {
+        setStreamByThread(previous => ({ ...previous, [event.threadId]: '' }));
+        setActivityByThread(previous => ({ ...previous, [event.threadId]: '' }));
+      }
       if (event.type === 'questions') setQuestions(event.questions);
       if (event.type === 'approvals') setApprovals(event.approvals);
       if (event.type === 'snapshot') {
@@ -370,11 +374,11 @@ export default function App() {
     } catch (error) { notify(String(error), 'error'); }
   }
 
-  async function send() {
+  async function send(delivery: 'queue' | 'steer' = 'queue') {
     const text = draft.trim() || (draftAttachments.length ? 'Please review the attached files.' : '');
     if (!text || !activeProjectId || sending || !providerInstalled) return;
     setSending(true);
-    if (activeThreadId) setActivityByThread(previous => ({ ...previous, [activeThreadId]: '' }));
+    if (activeThreadId && !activeThread?.running) setActivityByThread(previous => ({ ...previous, [activeThreadId]: '' }));
     let threadId = activeThreadId;
     try {
       if (!threadId) {
@@ -385,7 +389,7 @@ export default function App() {
         setActiveThreadId(thread.id);
         threadId = thread.id;
       }
-      await window.j2code.send(threadId, text, draftAttachments.map(file=>file.id), { title: summaryChoice || undefined, references: selectedReferences.map(item => item.id) });
+      await window.j2code.send(threadId, text, draftAttachments.map(file=>file.id), { delivery, title: summaryChoice || undefined, references: selectedReferences.map(item => item.id) });
       setReferences(previous => ({ ...previous, [draftKey]: { provider: activeProvider, items: [] } }));
       setAttachmentDrafts(previous=>({...previous,[draftKey]:[],[threadId!]:[]}));
       const acceptedThreadId = threadId;
@@ -397,7 +401,7 @@ export default function App() {
   }
 
   async function attachFiles(files?: File[]) {
-    if (attaching || activeThread?.running || sending) return;
+    if (attaching || sending) return;
     const key=draftKey;
     setAttaching(true);
     try {
@@ -522,7 +526,7 @@ export default function App() {
     const usable = snapshot.providers.some(provider => provider.id === choice.provider && provider.available) && !snapshot.disabledProviders.includes(choice.provider);
     return usable ? { provider: choice.provider, model: choice.model || undefined, label: providerNames[choice.provider] } : null;
   })();
-  const canSend = (!!draft.trim() || !!draftAttachments.length) && !attaching && !!activeProject && !!providerInstalled && providerEnabled && !modelBusy && !sending && (activeThread ? !activeThread.running : true);
+  const canSend = (!!draft.trim() || !!draftAttachments.length) && !attaching && !!activeProject && !!providerInstalled && providerEnabled && !modelBusy && !sending;
 
   async function summarize(id: string) {
     setContextMenu(null);
@@ -643,15 +647,19 @@ export default function App() {
               setSnapshot(previous=>({...previous,threads:[thread,...previous.threads.filter(t=>t.id!==thread.id)]}));
               setActiveThreadId(thread.id); setDrafts(previous=>({...previous,[thread.id]:'Implement the saved plan.'}));
             }}/>}
-            {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending || !!activeThread?.running} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
+            {!!activeThread?.queuedMessages?.length && <section className="message-queue" aria-label="Queued messages">
+              <div className="queue-heading"><strong>{activeThread.queuePaused ? 'Queue paused' : 'Queued'} · {activeThread.queuedMessages.length}</strong>{activeThread.queuePaused && !activeThread.running && <button onClick={() => window.j2code.resumeQueue(activeThread.id).catch(error => notify(String(error), 'error'))}>Resume queue</button>}</div>
+              {activeThread.queuedMessages.map(message => <div className="queued-message" key={message.id}><span>{message.text}{message.attachments.length > 0 && <small> · {message.attachments.length} attachment(s)</small>}</span><button aria-label={`Remove queued message: ${message.text}`} onClick={() => window.j2code.removeQueuedMessage(activeThread.id, message.id).catch(error => notify(String(error), 'error'))}><X size={14}/></button></div>)}
+            </section>}
+            {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
               <div className="composer" data-model-options-saving={modelOptionsSaving} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
 
               {autocomplete.menu}
               <div className="question-requests">{questions.filter(q=>q.threadId===activeThreadId).map(request=><QuestionCard key={request.id} request={request} onError={error=>notify(error,'error')}/>)}</div>
               <div className="approval-requests">{approvals.filter(request=>request.threadId === activeThreadId).map(request=><section className="approval-request" key={request.id} aria-label="Approval required"><strong>{request.title}</strong><pre>{request.detail}</pre><div>{[false,true].map(allow=><button key={String(allow)} disabled={answeringApproval === request.id} onClick={async()=>{setAnsweringApproval(request.id);try{await window.j2code.respondApproval(request.id,request.threadId,allow);}catch(error){notify(String(error),'error');}finally{setAnsweringApproval(null);}}}>{allow?'Allow once':'Deny'}</button>)}</div></section>)}</div>
-              <textarea {...autocomplete.aria} onSelect={autocomplete.updateCaret} onBlur={autocomplete.dismiss} onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask anything… @ files · / skills & plugins' : 'Install an agent CLI to start…'} value={draft} onChange={event => { setDraft(event.target.value); autocomplete.updateCaret(); }} onKeyDown={event => { if (autocomplete.onKeyDown(event)) return; if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
+              <textarea {...autocomplete.aria} onSelect={autocomplete.updateCaret} onBlur={autocomplete.dismiss} onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? (activeThread?.running ? 'Queue a follow-up, or steer the agent now…' : 'Ask anything… @ files · / skills & plugins') : 'Install an agent CLI to start…'} value={draft} onChange={event => { setDraft(event.target.value); autocomplete.updateCaret(); }} onKeyDown={event => { if (autocomplete.onKeyDown(event)) return; if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(event.altKey ? 'steer' : 'queue'); } }} disabled={sending} rows={2} aria-label="Message" />
               <div className="composer-bottom">
-                <button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || !!activeThread?.running || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button>
+                <button className="attach-button" aria-label="Attach files" title="Attach images or files" disabled={attaching || sending} onClick={()=>attachFiles()}>{attaching?<LoaderCircle size={15} className="spin"/>:<Paperclip size={15}/>}</button>
                 <div className="model-wrap">
                   <button className="model-select" data-testid="model-selector" aria-label="Select model" aria-expanded={modelOpen} onClick={() => { setModelOpen(!modelOpen); setEffortOpen(false); setModelQuery(''); setModelFilter(activeProvider); if (window.innerWidth <= 900) setChangesOpen(false); }} disabled={!!activeThread?.running || modelBusy || (providerLocked && !providerEnabled)}><ProviderIcon style={{width:16,height:16}} /><span className="model-current" title={activeModel || 'CLI default'}>{activeFamily?.label || activeModel || `${providerNames[activeProvider]} · Default`}</span><ChevronDown size={13} /></button>
                   {modelOpen && <div className="model-menu model-browser" role="dialog" aria-label="Choose a model">
@@ -712,7 +720,8 @@ export default function App() {
                 </div>
                 
               
-                {activeThread?.running ? <button className="send-button stop-button" onClick={() => window.j2code.cancel(activeThread.id)} title="Stop generation" aria-label="Stop generation"><Square size={13} fill="currentColor" /></button> : <button className="send-button" onClick={send} disabled={!canSend} title="Send message" aria-label="Send message">{sending ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={17} />}</button>}
+                {activeThread?.running && <><button className="steer-button" onClick={() => send('steer')} disabled={!canSend} title="Interrupt the current run and send this message next in the same session (Alt+Enter)">Steer now</button><button className="send-button stop-button" onClick={() => window.j2code.cancel(activeThread.id).catch(error => notify(String(error), 'error'))} title="Stop generation and pause queue" aria-label="Stop generation"><Square size={13} fill="currentColor" /></button></>}
+                <button className="send-button" onClick={() => send()} disabled={!canSend} title={activeThread?.running ? 'Queue message (Enter)' : 'Send message'} aria-label={activeThread?.running ? 'Queue message' : 'Send message'}>{sending ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={17} />}</button>
               </div>
               <WorkspacePicker key={`${activeProject.id}:${activeThreadId || 'new'}`} projectId={activeProject.id} thread={activeThread} branch={git.branch} value={workspaceChoice} disabled={sending} onChange={value => setWorkspaceDrafts(previous => ({ ...previous, [activeProject.id]: value }))}/>
             </div>

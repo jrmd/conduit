@@ -89,3 +89,25 @@ test('pinning survives restart and preserves activity order', async () => {
     await assert.rejects(() => store.pinThread('missing', true));
   } finally { await rm(dir, {recursive:true, force:true}); }
 });
+
+
+test('queue metadata survives restart and dispatch persists the message and dequeue together', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'conduit-queue-store-'));
+  try {
+    const file = path.join(dir, 'state.json');
+    const store = new Store(file);
+    const project = await store.addProject(dir);
+    const thread = await store.createThread(project.id, 'codex', 'supervised');
+    const pending = [
+      { id: 'first', text: 'First', attachments: ['attachment-id'], references: ['file:source.ts'] },
+      { id: 'second', text: 'Second', attachments: [], references: [] },
+    ];
+    await store.updateThread(thread.id, { queuedMessages: pending });
+    const reloaded = new Store(file); await reloaded.load();
+    assert.deepEqual(reloaded.getThread(thread.id).queuedMessages, pending);
+    await reloaded.appendMessage(thread.id, 'user', 'First', [], 'first');
+    const dispatched = new Store(file); await dispatched.load();
+    assert.deepEqual(dispatched.getThread(thread.id).queuedMessages, [pending[1]]);
+    assert.deepEqual(dispatched.getThread(thread.id).messages.map(message => message.text), ['First']);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

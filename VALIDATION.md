@@ -177,3 +177,10 @@ Successful CLI model catalogues are cached for five minutes, concurrent discover
 The regression test first failed with five Claude processes for discovery and four validations, then passed with one. Coverage includes concurrent discovery, cache isolation, expiry, explicit invalidation, unsupported values, clearing options, and permission changes with a cold cache. All 67 tests, typecheck, and Linux AppImage packaging passed. Live local Claude capability validation fell from about 2.3 seconds to below 1 ms with a warm cache; initial discovery still took about 1.2 seconds.
 
 Development and packaged Linux Electron configuration smokes retained an existing session while switching effort and permissions without additional Claude fixture processes. Packaged click-to-selection timings were 273 ms for effort and 61 ms for permissions. The existing model-options smoke also passed in both builds, including persistence and desktop/embedded/mobile layouts. These are software-rendered Linux checks with fixture conversations, not Windows or macOS runtime verification.
+
+
+## Message queue and steering (2026-09-25)
+
+The composer accepts follow-ups during active runs. Enter queues; Steer now / Alt+Enter interrupts the current run and resumes the same provider session with the correction before queued follow-ups. This uses interrupt/resume, not native in-turn injection. Stop pauses pending work; pending messages and attachment/reference IDs persist in state, and app restart requires Resume. Dispatch records the user message and removes its queue entry in one state write.
+
+Typecheck, production build, and 68 core tests passed. `env -u ELECTRON_RUN_AS_NODE J2CODE_VIRTUAL_DISPLAY=1 node scripts/smoke-message-queue.mjs` verifies real Electron IPC, FIFO dispatch, removal, renderer reload, steering order, session resume, Stop, restart persistence, and pausing after unavailable context. Desktop and 430px composer screenshots were inspected; controls wrap on narrow windows. Provider responses are deterministic Codex protocol fixtures, rendered with software/X11 on Linux; live-provider steering and native Windows/macOS execution remain unverified.

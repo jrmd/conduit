@@ -90,9 +90,10 @@ export class Store {
     this.state.threads = this.state.threads.filter(item => item.id !== id);
     await this.save();
   }
-  async appendMessage(id: string, role: Message['role'], text: string, attachments?: Message['attachments']) {
+  async appendMessage(id: string, role: Message['role'], text: string, attachments?: Message['attachments'], queuedMessageId?: string) {
     const thread = this.getThread(id);
     const message = { id: randomUUID(), role, text, createdAt: Date.now(), ...(attachments?.length ? {attachments} : {}) };
+    if (queuedMessageId) thread.queuedMessages = (thread.queuedMessages || []).filter(item => item.id !== queuedMessageId);
     thread.messages.push(message);
     thread.updatedAt = Date.now();
     if (role === 'user' && thread.title === 'New thread') thread.title = text.replace(/\s+/g, ' ').slice(0, 64) || 'New thread';
@@ -103,7 +104,7 @@ export class Store {
     this.getThread(id).pinned = pinned;
     await this.save();
   }
-  async updateThread(id: string, update: Partial<Pick<Thread, 'planning' | 'plan' | 'handoff' | 'sourceThreadId' | 'sessionId' | 'running' | 'model' | 'effort' | 'contextWindow' | 'fastMode' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
+  async updateThread(id: string, update: Partial<Pick<Thread, 'queuedMessages' | 'planning' | 'plan' | 'handoff' | 'sourceThreadId' | 'sessionId' | 'running' | 'model' | 'effort' | 'contextWindow' | 'fastMode' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
     const thread = this.getThread(id);
     Object.assign(thread, update);
     thread.updatedAt = Date.now();
