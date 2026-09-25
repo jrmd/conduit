@@ -1,5 +1,6 @@
 import { prepareWorkspace, workspaceInfo } from '../core/workspaces';
 import { Approvals } from '../core/approvals';
+import { runWithDelegation } from '../core/delegation';
 import { isThreadMode } from '../shared/approval';
 import os from 'node:os';
 import { composerItems, resolveReferences } from '../core/composer-context';
@@ -95,7 +96,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
   };
   const task = (async () => {
     try {
-      const result = await runProvider({ provider: thread.provider, cwd, prompt: prompt + references, attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'supervised', onApproval: (title, detail) => approvals.ask(threadId, title, detail, controller.signal), model: chosenModel, effort: chosenEffort, ...modelSettings, signal: controller.signal, onEvent: event => {
+      const result = await runWithDelegation({ provider: thread.provider, cwd, prompt: prompt + references, attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'supervised', onApproval: (title, detail) => approvals.ask(threadId, title, detail, controller.signal), model: chosenModel, effort: chosenEffort, ...modelSettings, signal: controller.signal, onEvent: event => {
         if (event.kind === 'activity' && event.activity) {
           const activity = store.recordActivity(threadId, runId, event.activity);
           emit({ type: 'activity', threadId, activity });
@@ -106,7 +107,7 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
         if (event.sessionId) persistSession(event.sessionId);
         if (event.kind === 'text') text += event.text;
         emit({ type: 'provider', threadId, kind: event.kind, text: event.text });
-      } });
+      } }, providers.filter(p => p.available && !store.snapshot().disabledProviders.includes(p.id)).map(p => p.id), runProvider);
       if (result.sessionId) persistSession(result.sessionId);
       await sessionWrite;
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);

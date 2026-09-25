@@ -16,7 +16,7 @@ export interface ProviderInfo { id: ProviderId; name: string; available: boolean
 export interface ModelOption { id: string; label: string; source: 'discovered' | 'alias'; efforts?: string[]; contextWindows?: number[]; supportsFastMode?: boolean; }
 export interface ModelCatalogue { provider: ProviderId; options: ModelOption[]; warning?: string; }
 export interface ThreadConfig extends ModelSettings { provider: ProviderId; model?: string; effort?: string; mode: ThreadMode; }
-export interface Activity { id: string; runId: string; kind: 'reasoning' | 'tool' | 'agent' | 'status'; title: string; detail: string; status: 'running' | 'completed' | 'failed' | 'interrupted' | 'unknown'; parentId?: string; agentId?: string; createdAt: number; updatedAt: number; }
+export interface Activity { id: string; runId: string; kind: 'reasoning' | 'tool' | 'agent' | 'status'; title: string; detail: string; status: 'running' | 'completed' | 'failed' | 'interrupted' | 'unknown'; parentId?: string; agentId?: string; provider?: ProviderId; model?: string; sessionId?: string; createdAt: number; updatedAt: number; }
 export type ActivityUpdate = Omit<Activity, 'runId' | 'createdAt' | 'updatedAt'> & { append?: boolean };
 export interface Snapshot { approvals?: ApprovalRequest[]; projects: Project[]; threads: Thread[]; providers: ProviderInfo[]; disabledProviders: ProviderId[]; }
 export interface ChangedFile { path: string; previousPath?: string; status: string; staged: boolean; unstaged: boolean; untracked: boolean; }
