@@ -169,3 +169,11 @@ Typecheck and production build passed. The sidebar Electron fixture smoke passed
 The macOS title bar keeps its 56px single-row layout and 94px native-control inset. Mac branding uses a 22px logo, 17px wordmark, and 8px logo/text gap to leave breathing room before the sidebar control. The collapsed sidebar retains the 94px top-bar inset.
 
 `node scripts/smoke-mac-header.mjs` loads the real renderer with a mocked macOS app-info response. It checks single-row height, native-control clearance, at least 16px between branding and sidebar control, vertical alignment, 1440/850/430 widths, overflow, and collapsed control clearance. This is a renderer layout check; native macOS traffic lights and dragging are not exercised.
+
+## Thread configuration latency (0.7.1)
+
+Successful CLI model catalogues are cached for five minutes, concurrent discovery requests share work, and explicit provider discovery clears the cache. Codex continues to read its local model file directly. Permission-only changes skip model capability validation; changed effort and model options still validate advertised support.
+
+The regression test first failed with five Claude processes for discovery and four validations, then passed with one. Coverage includes concurrent discovery, cache isolation, expiry, explicit invalidation, unsupported values, clearing options, and permission changes with a cold cache. All 67 tests, typecheck, and Linux AppImage packaging passed. Live local Claude capability validation fell from about 2.3 seconds to below 1 ms with a warm cache; initial discovery still took about 1.2 seconds.
+
+Development and packaged Linux Electron configuration smokes retained an existing session while switching effort and permissions without additional Claude fixture processes. Packaged click-to-selection timings were 273 ms for effort and 61 ms for permissions. The existing model-options smoke also passed in both builds, including persistence and desktop/embedded/mobile layouts. These are software-rendered Linux checks with fixture conversations, not Windows or macOS runtime verification.

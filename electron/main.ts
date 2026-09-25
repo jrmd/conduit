@@ -16,8 +16,9 @@ import { promises as fs } from 'node:fs';
 import { AttachmentStore, attachmentLimit, imageMime, prepareAttachments, type ResolvedAttachment } from '../core/attachments';
 import { createUpdates } from './updates';
 import { Store } from '../core/store.js';
+import { validateThreadConfig } from '../core/thread-config';
 import { commitContext, createPullRequest, gitCommit, gitDiff, gitPush, gitStatus, currentBranch, threadGitContext, findThreadPR } from '../core/git.js';
-import { discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
+import { clearModelCatalogues, discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
 import type { AppEvent, CommitInput, CommitMessageInput, PRInput, ProviderId, ProviderInfo, Snapshot, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
 
 // Keep the existing workspace and Electron profile across the Conduit rename.
@@ -228,7 +229,7 @@ function registerIpc() {
     await store.setProviderEnabled(provider as ProviderId, enabled);
     emitSnapshot();
   });
-  handle('discover', async () => { providers = await discoverProviders(); emitSnapshot(); return providers; });
+  handle('discover', async () => { clearModelCatalogues(); providers = await discoverProviders(); emitSnapshot(); return providers; });
   handle('models', async (provider: unknown) => {
     if (!providerIds.has(provider as ProviderId)) throw new Error('Unknown provider');
     if (store.snapshot().disabledProviders.includes(provider as ProviderId)) throw new Error('Provider is disabled');
@@ -282,11 +283,10 @@ function registerIpc() {
     if (!value || !providerIds.has(value.provider) || !isThreadMode(value.mode)) throw new Error('Invalid thread configuration');
     if (store.snapshot().disabledProviders.includes(value.provider)) throw new Error('Enable this provider in Settings first');
     if (!providers.find(provider => provider.id === value.provider)?.available) throw new Error('Provider CLI is unavailable');
-    const model = normalizeModelId(value.model);
-    const effort = await validateEffort(value.provider, model, value.effort);
-    const modelSettings = await validateModelSettings(value.provider, model, value);
     if (active.has(id) || starting.has(id)) throw new Error('Wait for this run to finish');
-    const thread = await store.configureThread(id, { provider: value.provider, mode: value.mode, planning:value.planning === undefined ? store.getThread(id).planning : value.planning === true, model, effort, contextWindow: modelSettings.contextWindow, fastMode: modelSettings.fastMode });
+    const config = await validateThreadConfig(store.getThread(id), value);
+    if (active.has(id) || starting.has(id)) throw new Error('Wait for this run to finish');
+    const thread = await store.configureThread(id, config);
     emitSnapshot();
     return thread;
   });

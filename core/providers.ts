@@ -299,7 +299,31 @@ async function captureModelList(executable: string, args: string[], timeoutMs: n
   });
 }
 
+const modelCatalogues = new Map<ProviderId, {key: string; expiresAt: number; result: Promise<ModelCatalogue>}>();
+const modelCatalogueTtlMs = 5 * 60 * 1000;
+
+export function clearModelCatalogues() { modelCatalogues.clear(); }
+
 export async function discoverModels(provider: ProviderId): Promise<ModelCatalogue> {
+  // Codex reads a cheap local file, which can change independently of this app.
+  if (provider === 'codex') return discoverModelsUncached(provider);
+  const key = JSON.stringify([process.env.PATH, process.env.HOME, process.env.CLAUDE_CONFIG_DIR, process.env.XDG_CONFIG_HOME]);
+  const cached = modelCatalogues.get(provider);
+  if (cached?.key === key && cached.expiresAt > Date.now()) return structuredClone(await cached.result);
+  const entry = {key, expiresAt: Infinity, result: discoverModelsUncached(provider)};
+  modelCatalogues.set(provider, entry);
+  try {
+    const catalogue = await entry.result;
+    // Do not retain failures or fallback aliases; the next lookup should retry.
+    entry.expiresAt = catalogue.options.some(option => option.source === 'discovered') ? Date.now() + modelCatalogueTtlMs : 0;
+    return structuredClone(catalogue);
+  } catch (error) {
+    if (modelCatalogues.get(provider) === entry) modelCatalogues.delete(provider);
+    throw error;
+  }
+}
+
+async function discoverModelsUncached(provider: ProviderId): Promise<ModelCatalogue> {
   if (provider === 'copilot') {
     const executable = await findExecutable(provider);
     if (!executable) return { provider, options: [], warning: 'Copilot CLI not found. Install copilot and sign in with copilot login.' };
