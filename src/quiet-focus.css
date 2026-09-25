@@ -226,6 +226,7 @@ html[data-theme] .quiet-focus .approval-mode-wrap { position:relative; margin-le
 html[data-theme] .quiet-focus .approval-mode-menu { position:absolute; bottom:calc(100% + 12px); right:0; width:300px; max-width:calc(100vw - 40px); padding:6px; z-index:60; border:1px solid var(--q-line); border-radius:12px; background:var(--q-paper); box-shadow:var(--q-shadow); }
 html[data-theme] .quiet-focus .approval-mode-menu button { display:flex; align-items:center; width:100%; gap:12px; padding:10px; text-align:left; border:0; border-radius:5px; background:transparent; color:var(--q-text); }
 html[data-theme] .quiet-focus .approval-mode-menu button:hover,html[data-theme] .quiet-focus .approval-mode-menu button[aria-pressed=true] { background:var(--q-hover); }
+html[data-theme] .quiet-focus .approval-mode-menu button>svg { flex-shrink:0; }
 html[data-theme] .quiet-focus .approval-mode-menu button>span { flex:1; }
 html[data-theme] .quiet-focus .approval-mode-menu strong { font-size:12px; font-weight:500; }
 html[data-theme] .quiet-focus .approval-mode-menu small { display:block; margin-top:4px; font-size:11px; line-height:1.5; color:var(--q-muted); }

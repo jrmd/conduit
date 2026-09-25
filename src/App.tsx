@@ -23,6 +23,7 @@ import { JrmdShader } from './JrmdShader.webgl';
 import { ProjectPicker } from './ProjectPicker';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ClipboardList, Hammer, ShieldCheck, ShieldOff, FileCheck2,
   Pin, PinOff, Archive, Copy, Paperclip, Download, Sparkles, Zap, ArrowUp, Check, ChevronDown, ChevronRight, CircleAlert,
   CircleCheck, File, FileCode2, FileDiff, Folder,
   GitBranch, GitCommitHorizontal, GitPullRequest, LoaderCircle, Menu,
@@ -34,6 +35,13 @@ import type { Thread, ComposerItem, Attachment, UpdateStatus, ChangedFile, GitSt
 
 type Dialog = 'commit' | 'push' | 'pr' | 'delete' | 'removeProject' | null;
 type Toast = { text: string; kind: 'success' | 'error' } | null;
+
+const approvalModeIcons = { supervised: ShieldCheck, 'auto-edits': FileCheck2, auto: Sparkles, 'full-access': ShieldOff };
+
+function ApprovalModeIcon({ mode, size = 14 }: { mode: ApprovalMode; size?: number }) {
+  const Icon = approvalModeIcons[mode];
+  return <Icon size={size} aria-hidden="true" />;
+}
 
 const effortRanks = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
 
@@ -694,13 +702,13 @@ export default function App() {
                   setModelBusy(true);
                   try {const updated=await window.j2code.updateThreadConfig(activeThread.id,{...activeThread,planning:!activeThread.planning});setSnapshot(previous=>({...previous,threads:previous.threads.map(t=>t.id===updated.id?updated:t)}));}
                   catch(error){notify(String(error),'error');}finally{setModelBusy(false);}
-                }}>Plan</button>
+                }}>{(activeThread?.planning ?? planning) ? <><ClipboardList size={14} aria-hidden="true" />Plan</> : <><Hammer size={14} aria-hidden="true" />Build</>}</button>
                 <div className="approval-mode-wrap">
-                  <button className="mode-select" aria-label="Approval mode" aria-expanded={approvalOpen} disabled={!!activeThread?.running || sending || modelBusy} onClick={() => { setApprovalOpen(!approvalOpen); setModelOpen(false); setEffortOpen(false); }}>{approvalModes.find(mode => mode.id === approvalMode(activeThread?.mode || selectedMode))?.label}<ChevronDown size={13}/></button>
+                  <button className="mode-select" aria-label="Approval mode" aria-expanded={approvalOpen} disabled={!!activeThread?.running || sending || modelBusy} onClick={() => { setApprovalOpen(!approvalOpen); setModelOpen(false); setEffortOpen(false); }}><ApprovalModeIcon mode={approvalMode(activeThread?.mode || selectedMode)} />{approvalModes.find(mode => mode.id === approvalMode(activeThread?.mode || selectedMode))?.label}<ChevronDown size={13}/></button>
                   {approvalOpen && <div className="approval-mode-menu" role="dialog" aria-label="Choose approval mode">{approvalModes.map(mode => <button key={mode.id} aria-pressed={approvalMode(activeThread?.mode || selectedMode) === mode.id} onClick={async () => {
                     setModelBusy(true);
                     try { if(activeThread) { const updated = await window.j2code.updateThreadConfig(activeThread.id,{provider:activeProvider,model:activeModel || undefined,effort:activeEffort || undefined,contextWindow:activeModelSettings.contextWindow,fastMode:activeModelSettings.fastMode,mode:mode.id}); setSnapshot(previous=>({...previous,threads:previous.threads.map(thread=>thread.id===updated.id?updated:thread)})); } else setSelectedMode(mode.id); setApprovalOpen(false); } catch(error) { notify(String(error),'error'); } finally { setModelBusy(false); }
-                  }} disabled={modelBusy}><span><strong>{mode.label}</strong><small>{mode.description}</small></span>{approvalMode(activeThread?.mode || selectedMode) === mode.id && <Check size={14}/>}</button>)}{(activeProvider === 'cursor' || activeProvider === 'opencode' || activeProvider === 'copilot') && <p>Auto asks for approval with {providerNames[activeProvider]}.</p>}</div>}
+                  }} disabled={modelBusy}><ApprovalModeIcon mode={mode.id} size={16} /><span><strong>{mode.label}</strong><small>{mode.description}</small></span>{approvalMode(activeThread?.mode || selectedMode) === mode.id && <Check size={14}/>}</button>)}{(activeProvider === 'cursor' || activeProvider === 'opencode' || activeProvider === 'copilot') && <p>Auto asks for approval with {providerNames[activeProvider]}.</p>}</div>}
                 </div>
                 
               
