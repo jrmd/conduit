@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {runInteractiveProvider} from "./interactive-provider";
 import type {ApprovalMode,ProviderId} from "../shared/api";
+import {discoverModels, clearModelCatalogues} from './providers';
 import {runWithDelegation} from './delegation';
 
 test("interactive transports route denials and Auto fallbacks, stream thinking, and only auto-accept edits in the edit mode",{skip:process.platform==="win32"},async()=>{
@@ -90,4 +91,30 @@ test('native plan modes, checklist events and provider-specific question answers
    } finally {clearTimeout(timeout);}
   }
  } finally {await rm(dir,{recursive:true,force:true});}
+});
+
+ test('Cursor selected models use ACP variant IDs and retain actionable RPC errors', {skip:process.platform==='win32'}, async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'conduit-cursor-model-'));const executable=join(dir,'provider');
+ try {
+  await copyFile('scripts/fixtures/approval-provider.mjs',executable);await chmod(executable,0o755);
+  const run=(model:string)=>runInteractiveProvider({provider:'cursor',cwd:dir,prompt:'hello',model,signal:AbortSignal.timeout(5000),onEvent:()=>{}},executable,{...process.env,VULP_CURSOR_MODELS:'1'});
+  await run('gpt-5.6-luna[reasoning=medium,fast=false]');
+  await assert.rejects(run('unavailable'), /session\/set_config_option.*Invalid model value: unavailable/);
+ } finally {await rm(dir,{recursive:true,force:true});}
+});
+
+test('Cursor discovery returns the same IDs accepted by ACP execution', {skip:process.platform==='win32'}, async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'conduit-cursor-discovery-'));const executable=join(dir,'cursor-agent');
+ const previousPath=process.env.PATH, previousFixture=process.env.VULP_CURSOR_MODELS;
+ try {
+  await copyFile('scripts/fixtures/approval-provider.mjs',executable);await chmod(executable,0o755);
+  process.env.PATH=dir+':'+previousPath;process.env.VULP_CURSOR_MODELS='1';clearModelCatalogues();
+  const catalogue=await discoverModels('cursor');
+  assert.equal(catalogue.options[0]?.id,'gpt-5.6-luna[reasoning=medium,fast=false]');
+  await runInteractiveProvider({provider:'cursor',cwd:dir,prompt:'hello',model:catalogue.options[0].id,signal:AbortSignal.timeout(5000),onEvent:()=>{}},executable,{...process.env});
+ } finally {
+  if(previousPath===undefined)delete process.env.PATH;else process.env.PATH=previousPath;
+  if(previousFixture===undefined)delete process.env.VULP_CURSOR_MODELS;else process.env.VULP_CURSOR_MODELS=previousFixture;
+  clearModelCatalogues();await rm(dir,{recursive:true,force:true});
+ }
 });

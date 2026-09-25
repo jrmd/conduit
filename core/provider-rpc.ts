@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 export class ProviderRpc {
   private child;
   private sequence = 0;
-  private pending = new Map<number, {resolve:(value:any)=>void; reject:(error:Error)=>void}>();
+  private pending = new Map<number, {method:string; resolve:(value:any)=>void; reject:(error:Error)=>void}>();
   private failure?: Error;
   private stderr = "";
   private abort: () => void;
@@ -45,13 +45,16 @@ export class ProviderRpc {
     else {
       const pending=this.pending.get(message.id); if(!pending) return;
       this.pending.delete(message.id);
-      if(message.error) pending.reject(new Error(message.error.message || JSON.stringify(message.error))); else pending.resolve(message.result);
+      if(message.error) {
+        const detail = typeof message.error.data?.message === 'string' ? message.error.data.message : '';
+        pending.reject(new Error(`${pending.method}: ${message.error.message || 'Provider request failed'}${detail ? `: ${detail}` : ''}`));
+      } else pending.resolve(message.result);
     }
   }
   request(method:string,params:unknown):Promise<any> {
     if(this.failure) return Promise.reject(this.failure);
     const id=++this.sequence;
-    return new Promise((resolve,reject)=>{this.pending.set(id,{resolve,reject});this.send({jsonrpc:"2.0",id,method,params});});
+    return new Promise((resolve,reject)=>{this.pending.set(id,{method,resolve,reject});this.send({jsonrpc:"2.0",id,method,params});});
   }
   notify(method:string,params:unknown={}) { this.send({jsonrpc:"2.0",method,params}); }
   close() {

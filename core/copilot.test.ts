@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, chmod, readFile, rm } from 'node:fs/promises';
 import { join, delimiter } from 'node:path';
 import { tmpdir } from 'node:os';
-import { discoverModels, discoverProviders, parseCopilotModels, runProvider } from './providers';
+import { discoverModels, discoverProviders, parseAcpModels, runProvider } from './providers';
 import { Store } from './store';
 
 test('Copilot models use advertised config options or legacy model state', () => {
-  assert.deepEqual(parseCopilotModels({ configOptions: [{ category: 'model', options: [{ name: 'Group', options: [{value:'model-a',name:'Model A'}, {value:'bad id'}] }, {value:'model-a'}] }] }), [{ id:'model-a', label:'Model A', source:'discovered' }]);
-  assert.equal(parseCopilotModels({ models: { availableModels: [{ modelId:'model-b', name:'Model B' }] } })[0].id, 'model-b');
-  assert.deepEqual(parseCopilotModels({}), []);
+  assert.deepEqual(parseAcpModels({ configOptions: [{ category: 'model', options: [{ name: 'Group', options: [{value:'model-a',name:'Model A'}, {value:'bad id'}] }, {value:'model-a'}] }] }), [{ id:'model-a', label:'Model A', source:'discovered' }]);
+  assert.equal(parseAcpModels({ models: { availableModels: [{ modelId:'model-b', name:'Model B' }] } })[0].id, 'model-b');
+  assert.deepEqual(parseAcpModels({}), []);
 });
 
 test('Copilot discovery, ACP-only routing, model selection, resume, failures and cancellation', { skip: process.platform === 'win32' }, async () => {

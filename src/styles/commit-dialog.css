@@ -26,3 +26,6 @@ html[data-theme] .quiet-focus .commit-dialog p { color:var(--q-muted); }
 .commit-bar { padding:12px 16px; border-top:1px solid var(--q-line); }
 .commit-bar .primary-button { width:100%; justify-content:center; }
 .activity-placeholder { color:var(--q-muted); font-size:11px; line-height:1.6; margin:8px 0 12px; }
+
+.pr-dialog { max-height:calc(100dvh - 40px); overflow-y:auto; }
+html[data-theme] .quiet-focus .pr-dialog p strong { color:var(--q-text); }

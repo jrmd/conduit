@@ -58,7 +58,7 @@ export function normalizeModelId(value: unknown): string | undefined {
   if (typeof value !== 'string') throw new Error('Invalid model ID');
   const model = value.trim();
   if (!model) return undefined;
-  if (model.length > 160 || !/^[A-Za-z0-9][A-Za-z0-9._:/+@-]*(?:\[[A-Za-z0-9]+\])?$/.test(model)) throw new Error('Invalid model ID');
+  if (model.length > 160 || !/^[A-Za-z0-9][A-Za-z0-9._:/+@-]*(?:\[[A-Za-z0-9._=-]+(?:,[A-Za-z0-9._=-]+)*\])?$/.test(model)) throw new Error('Invalid model ID');
   return model;
 }
 
@@ -324,19 +324,21 @@ export async function discoverModels(provider: ProviderId): Promise<ModelCatalog
 }
 
 async function discoverModelsUncached(provider: ProviderId): Promise<ModelCatalogue> {
-  if (provider === 'copilot') {
+  if (provider === 'copilot' || provider === 'cursor') {
+    const name = provider === 'cursor' ? 'Cursor' : 'Copilot';
+    const command = provider === 'cursor' ? 'agent' : 'copilot';
     const executable = await findExecutable(provider);
-    if (!executable) return { provider, options: [], warning: 'Copilot CLI not found. Install copilot and sign in with copilot login.' };
+    if (!executable) return { provider, options: [], warning: `${name} CLI not found. Install it and sign in with ${command} login.` };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
-    const rpc = new ProviderRpc(executable, ['--acp', '--stdio'], homedir(), providerEnvironment(), controller.signal);
+    const rpc = new ProviderRpc(executable, provider === 'cursor' ? ['acp'] : ['--acp', '--stdio'], homedir(), providerEnvironment(), controller.signal);
     try {
       await rpc.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'conduit', version: '0.5.0' } });
       const session = await rpc.request('session/new', { cwd: homedir(), mcpServers: [] });
-      const options = parseCopilotModels(session);
-      return { provider, options, warning: options.length ? undefined : 'Copilot did not advertise models. Use CLI default or enter a model ID. Sign in with copilot login if needed.' };
+      const options = parseAcpModels(session);
+      return { provider, options, warning: options.length ? undefined : `${name} did not advertise models. Use CLI default or sign in with ${command} login.` };
     } catch {
-      return { provider, options: [], warning: 'Could not query Copilot ACP. Update copilot and sign in with copilot login, then refresh discovery.' };
+      return { provider, options: [], warning: `Could not query ${name} ACP. Update ${command} and sign in with ${command} login, then refresh discovery.` };
     } finally { clearTimeout(timer); rpc.close(); }
   }
   if (provider === 'codex') {
@@ -615,7 +617,7 @@ export async function validateModelSettings(provider: ProviderId, model: string 
 }
 
 /** Use ACP-advertised models rather than a hard-coded catalogue. */
-export function parseCopilotModels(session: any): ModelOption[] {
+export function parseAcpModels(session: any): ModelOption[] {
   const config = session.configOptions?.find((option: any) => option.category === 'model' || option.id === 'model');
   const rows = config?.options?.flatMap((option: any) => option.options || [option])
     || session.models?.availableModels || [];

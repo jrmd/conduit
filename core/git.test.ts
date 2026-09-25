@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, mkdir, rm, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { commitContext, gitCommit, gitDiff, gitPush, gitStatus } from './git.js';
+import { commitContext, pullRequestContext, gitCommit, gitDiff, gitPush, gitStatus } from './git.js';
 import { normalizeCommitMessage } from './thread-title.js';
 
 function git(cwd: string, ...args: string[]) { return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim(); }
@@ -132,5 +132,48 @@ test('first commit context describes the working file, including edits after sta
     const context = await commitContext(dir, ['new.txt']);
     assert.match(context.diff, /\+working version/);
     assert.doesNotMatch(context.diff, /staged version/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+
+test('feature branch commit leaves main unchanged and pushes the new branch', async () => {
+  const dir = await repo();
+  const bare = await mkdtemp(path.join(tmpdir(), 'j2code-feature-remote-'));
+  try {
+    git(dir, 'branch', '-M', 'main');
+    const original = git(dir, 'rev-parse', 'main');
+    git(bare, 'init', '--bare', '-q');
+    git(dir, 'remote', 'add', 'origin', bare);
+    await writeFile(path.join(dir, 'selected.txt'), 'feature change\n');
+    await assert.rejects(gitCommit(dir, ['selected.txt'], 'Add feature', 'bad branch'));
+    assert.equal(git(dir, 'branch', '--show-current'), 'main');
+    await gitCommit(dir, ['selected.txt'], 'Add feature', 'feature/change');
+    await gitPush(dir);
+    assert.equal(git(dir, 'rev-parse', 'main'), original);
+    assert.equal((await gitStatus(dir)).remote, 'origin/feature/change');
+    assert.equal(git(bare, 'rev-parse', 'refs/heads/feature/change'), git(dir, 'rev-parse', 'HEAD'));
+  } finally { await rm(dir, { recursive: true, force: true }); await rm(bare, { recursive: true, force: true }); }
+});
+
+test('PR context describes committed branch range and discovers GitHub templates', async () => {
+  const dir = await repo();
+  try {
+    git(dir, 'branch', '-M', 'main');
+    await assert.rejects(pullRequestContext(dir), /feature branch/);
+    git(dir, 'switch', '-c', 'feature/example');
+    await writeFile(path.join(dir, 'selected.txt'), 'committed feature\n');
+    await gitCommit(dir, ['selected.txt'], 'Implement feature');
+    await writeFile(path.join(dir, 'selected.txt'), 'uncommitted secret\n');
+    await mkdir(path.join(dir, '.github', 'PULL_REQUEST_TEMPLATE'), { recursive: true });
+    await writeFile(path.join(dir, '.github', 'PULL_REQUEST_TEMPLATE', 'feature.md'), '## Summary\n## Testing\n- [ ] Checked');
+    const context = await pullRequestContext(dir);
+    assert.equal(context.base, 'main');
+    assert.match(context.diff, /committed feature/);
+    assert.doesNotMatch(context.diff, /uncommitted secret/);
+    assert.equal(context.commits, 'Implement feature');
+    assert.equal(context.templatePath, '.github/PULL_REQUEST_TEMPLATE/feature.md');
+    assert.match(context.template, /## Testing/);
+    await writeFile(path.join(dir, '.github', 'pull_request_template.md'), '## Default');
+    assert.equal((await pullRequestContext(dir)).template, '## Default');
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

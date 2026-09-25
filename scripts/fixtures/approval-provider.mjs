@@ -20,6 +20,12 @@ createInterface({input:process.stdin}).on("line",line=>{
  if(!m.method || m.id===undefined) return;
  if(m.method==="initialize") return send({id:m.id,result:{agentCapabilities:{loadSession:true}}});
  if(m.method==="thread/start" || m.method==="thread/resume") return send({id:m.id,result:{thread:{id:"fixture-session"}}});
+ if(process.env.VULP_CURSOR_MODELS) {
+   const value='gpt-5.6-luna[reasoning=medium,fast=false]';
+   const configOptions=[{id:'model',category:'model',type:'select',currentValue:value,options:[{value,name:'GPT-5.6 Luna'}]}];
+   if(m.method==='session/new' || m.method==='session/load') return send({id:m.id,result:{sessionId:'fixture-session',configOptions}});
+   if(m.method==='session/set_config_option') return p.value===value ? send({id:m.id,result:{configOptions}}) : send({id:m.id,error:{code:-32602,message:'Invalid params',data:{message:`Invalid model value: ${p.value}`}}});
+ }
  if(m.method==="session/new" || m.method==="session/load") return send({id:m.id,result:{sessionId:"fixture-session"}});
  if(m.method==="turn/start" || m.method==="session/prompt") {
    promptId=m.id;

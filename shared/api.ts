@@ -29,7 +29,9 @@ export interface ChangedFile { path: string; previousPath?: string; status: stri
 export interface GitStatus { branch: string; files: ChangedFile[]; ahead: number; behind: number; remote?: string; pushTarget?: string; isRepository: boolean; }
 export type AppEvent = { type: 'run-finished'; threadId: string } | { type: 'questions'; questions: QuestionRequest[] } | { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
 export interface CommitMessageInput { threadId?: string; projectId: string; files: string[]; provider: ProviderId; model?: string; }
-export interface CommitInput { threadId?: string; projectId: string; files: string[]; message: string; }
+export interface CommitInput { threadId?: string; projectId: string; files: string[]; message: string; newBranch?: string; }
+export interface PRDraftInput { threadId?: string; projectId: string; provider: ProviderId; model?: string; }
+export interface PRDraft { title: string; body: string; base: string; template?: string; }
 export interface PRInput { threadId?: string; projectId: string; title: string; body: string; base?: string; draft: boolean; }
 export interface ComposerItem { id: string; kind: 'file' | 'skill' | 'plugin'; name: string; description: string; token: string; path?: string; }
 export interface SendOptions { delivery?: 'queue' | 'steer'; title?: { provider: ProviderId; model?: string }; references?: string[]; }
@@ -62,6 +64,7 @@ export interface DesktopApi {
   updateThreadModel(threadId: string, model?: string): Promise<Thread>;
   deleteThread(threadId: string): Promise<void>;
   send(threadId: string, prompt: string, attachments?: string[], options?: SendOptions): Promise<void>;
+  steerQueuedMessage(threadId: string, messageId: string): Promise<void>;
   removeQueuedMessage(threadId: string, messageId: string): Promise<void>;
   resumeQueue(threadId: string): Promise<void>;
   cancel(threadId: string): Promise<void>;
@@ -72,6 +75,7 @@ export interface DesktopApi {
   commit(input: CommitInput): Promise<string>;
   generateCommitMessage(input: CommitMessageInput): Promise<string>;
   push(projectId: string, threadId?: string): Promise<string>;
+  generatePR(input: PRDraftInput): Promise<PRDraft>;
   createPR(input: PRInput): Promise<string>;
   openExternal(url: string): Promise<void>;
   onEvent(callback: (event: AppEvent) => void): () => void;

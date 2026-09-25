@@ -78,10 +78,14 @@ export async function gitDiff(cwd: string, file: string) {
   return [staged, unstaged].filter(Boolean).join('\n');
 }
 
-export async function gitCommit(cwd: string, files: string[], message: string) {
+export async function gitCommit(cwd: string, files: string[], message: string, newBranch?: string) {
   cwd = await root(cwd);
   await requireChanged(cwd, files);
   if (!message.trim() || message.length > 1000) throw new Error('Enter a commit message');
+  if (newBranch) {
+    await git(cwd, 'check-ref-format', '--branch', newBranch);
+    await git(cwd, 'switch', '--no-track', '-c', newBranch);
+  }
   // --only creates a commit from exactly these paths, preserving unrelated staged changes.
   // Intent-to-add makes selected untracked files eligible without staging their content.
   const status = await gitStatus(cwd);
@@ -183,4 +187,34 @@ export async function findThreadPR(cwd: string, repository: string, branch: stri
   const matches = values.filter(value => value.headRefName === branch && Number.isInteger(value.number) && /^https:\/\//.test(value.url));
   const pr = matches.find(value => value.state === 'OPEN') || matches[0];
   return pr ? { number: pr.number, url: pr.url, state: pr.state, title: pr.title } : null;
+}
+
+/** Describe committed branch changes, excluding unrelated working-tree edits. */
+export async function pullRequestContext(cwd: string, budget = 24_000) {
+  cwd = await root(cwd);
+  const remoteHead = await git(cwd, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD').catch(() => '');
+  const defaultBranch = await command('gh', ['repo', 'view', '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name'], cwd).catch(() => '');
+  const base = defaultBranch || remoteHead.replace(/^origin\//, '') || (await git(cwd, 'show-ref', '--verify', '--quiet', 'refs/heads/main').then(() => 'main', () => 'master'));
+  const branch = await git(cwd, 'branch', '--show-current');
+  if (!branch || branch === base) throw new Error('Create a feature branch before drafting a pull request');
+  const baseRef = await git(cwd, 'rev-parse', '--verify', `refs/remotes/origin/${base}`).then(() => `refs/remotes/origin/${base}`, () => `refs/heads/${base}`);
+  const mergeBase = await git(cwd, 'merge-base', baseRef, 'HEAD');
+  const [commits, stat, diff] = await Promise.all([
+    git(cwd, 'log', '--format=%s%n%b', `${mergeBase}..HEAD`),
+    git(cwd, 'diff', '--stat', mergeBase, 'HEAD'),
+    git(cwd, 'diff', mergeBase, 'HEAD'),
+  ]);
+  if (!commits) throw new Error('No branch commits to describe');
+  const github = path.join(cwd, '.github');
+  const entries = await fs.readdir(github, { withFileTypes: true }).catch(() => []);
+  let templatePath = entries.find(entry => entry.isFile() && entry.name.toLowerCase() === 'pull_request_template.md')?.name;
+  if (!templatePath) {
+    const directory = entries.find(entry => entry.isDirectory() && entry.name.toLowerCase() === 'pull_request_template')?.name;
+    if (directory) {
+      const templates = (await fs.readdir(path.join(github, directory), { withFileTypes: true })).filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.md')).sort((a, b) => a.name.localeCompare(b.name));
+      if (templates[0]) templatePath = `${directory}/${templates[0].name}`;
+    }
+  }
+  const template = templatePath ? (await fs.readFile(path.join(github, templatePath), 'utf8')).slice(0, 20_000) : '';
+  return { base, commits: commits.slice(0, 8000), stat: stat.slice(0, 4000), diff: diff.slice(0, budget), template, templatePath: templatePath ? `.github/${templatePath}` : undefined };
 }

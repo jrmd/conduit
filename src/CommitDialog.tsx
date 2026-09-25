@@ -11,18 +11,24 @@ function badge(file: ChangedFile) {
 }
 
 /** Commits every changed file unless the reader narrows the list; the message can be drafted from the diff. */
-export function CommitDialog({ projectId, threadId, branch, files, initial, writer, onClose, onCommitted, notify }: {
+export function CommitDialog({ projectId, threadId, branch, pushTarget, files, initial, writer, onClose, onCommitted, onRefresh, notify }: {
   projectId: string;
   threadId?: string;
   branch: string;
+  pushTarget?: string;
   files: ChangedFile[];
   initial: string[];
   writer: { provider: ProviderId; model?: string; label: string } | null;
   onClose(): void;
   onCommitted(): void;
+  onRefresh(): void;
   notify(text: string, kind?: 'success' | 'error'): void;
 }) {
   const [chosen, setChosen] = useState<string[]>(() => initial.length ? initial : files.map(file => file.path));
+  const [push, setPush] = useState(false);
+  const [useBranch, setUseBranch] = useState(true);
+  const [newBranch, setNewBranch] = useState('');
+  const suggestBranch = push && /^(main|master)$/.test(branch);
   const [message, setMessage] = useState('');
   const [generating, setGenerating] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -34,7 +40,7 @@ export function CommitDialog({ projectId, threadId, branch, files, initial, writ
 
   const all = files.length > 0 && chosen.length === files.length;
   const locked = generating || committing;
-  const canCommit = !!message.trim() && chosen.length > 0 && !committing && !generating;
+  const canCommit = (!!message.trim() || !!writer) && chosen.length > 0 && !locked && (!push || !!pushTarget) && (!suggestBranch || !useBranch || !!newBranch.trim());
   const toggle = (path: string) => setChosen(previous => previous.includes(path) ? previous.filter(item => item !== path) : [...previous, path]);
 
   async function generate() {
@@ -50,12 +56,26 @@ export function CommitDialog({ projectId, threadId, branch, files, initial, writ
   async function commit() {
     if (!canCommit) return;
     setCommitting(true);
+    let committed = false;
     try {
-      await window.j2code.commit({ projectId, threadId, files: chosen, message: message.trim() });
-      notify(`Committed ${chosen.length} ${chosen.length === 1 ? 'file' : 'files'}`);
+      let text = message.trim();
+      if (!text && writer) {
+        setGenerating(true);
+        text = await window.j2code.generateCommitMessage({ projectId, threadId, files: chosen, provider: writer.provider, model: writer.model });
+        setMessage(text);
+        setGenerating(false);
+      }
+      await window.j2code.commit({ projectId, threadId, files: chosen, message: text, newBranch: suggestBranch && useBranch ? newBranch.trim() : undefined });
+      committed = true;
+      if (push) await window.j2code.push(projectId, threadId);
+      notify(push ? 'Changes committed and pushed' : `Committed ${chosen.length} ${chosen.length === 1 ? 'file' : 'files'}`);
       onCommitted();
-    } catch (error) { notify(String(error), 'error'); }
-    finally { if (mounted.current) setCommitting(false); }
+    } catch (error) {
+      notify(committed ? `Commit saved locally, but push failed. Use Push branch to retry. ${String(error)}` : String(error), 'error');
+      if (committed) onCommitted();
+      else onRefresh();
+    }
+    finally { if (mounted.current) { setCommitting(false); setGenerating(false); } }
   }
 
   return <div className="modal-backdrop" onMouseDown={event => { if (!committing && event.target === event.currentTarget) onClose(); }} onKeyDown={event => { if (!committing && event.key === 'Escape') onClose(); }}>
@@ -84,13 +104,21 @@ export function CommitDialog({ projectId, threadId, branch, files, initial, writ
           {generating ? <LoaderCircle size={13} className="spin"/> : <Sparkles size={13}/>}{generating ? 'Writing…' : message.trim() ? 'Regenerate' : 'Generate'}
         </button>
       </div>
-      <textarea id="commit-message" maxLength={1000} readOnly={locked} ref={input} className={generating ? 'is-generating' : undefined} value={message} onChange={event => setMessage(event.target.value)} rows={4} placeholder="Summarise the change, or generate a message from the diff"
+      <textarea id="commit-message" maxLength={1000} readOnly={locked} ref={input} className={generating ? 'is-generating' : undefined} value={message} onChange={event => setMessage(event.target.value)} rows={4} placeholder="Leave blank to generate a message when you commit"
         onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void commit(); } }}/>
       <small className="commit-hint">{navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'} + Enter to commit</small>
 
+      {!writer && <small className="commit-hint">Enter a message or enable an agent in Settings to generate one.</small>}
+      <label className="draft-toggle"><input type="checkbox" checked={push} disabled={locked || !pushTarget} onChange={event => setPush(event.target.checked)}/><span>Push after committing</span></label>
+      {!pushTarget && <small className="commit-hint">Configure a Git remote to commit and push.</small>}
+      {suggestBranch && <div className="commit-branch-suggestion">
+        <p>You’re on <strong>{branch}</strong>. Create a feature branch for these changes?</p>
+        <label className="draft-toggle"><input type="checkbox" checked={useBranch} disabled={locked} onChange={event => setUseBranch(event.target.checked)}/><span>Create a feature branch before committing</span></label>
+        {useBranch && <><label className="field-label" htmlFor="commit-branch">Feature branch</label><input id="commit-branch" value={newBranch} disabled={locked} onChange={event => setNewBranch(event.target.value)} placeholder="feature/my-change"/></>}
+      </div>}
       <div className="dialog-actions">
         <button className="ghost-button" disabled={committing} onClick={onClose}>Cancel</button>
-        <button className="primary-button" onClick={commit} disabled={!canCommit}>{committing ? <LoaderCircle size={16} className="spin"/> : <GitCommitHorizontal size={16}/>}Commit</button>
+        <button className="primary-button" onClick={commit} disabled={!canCommit}>{committing ? <LoaderCircle size={16} className="spin"/> : <GitCommitHorizontal size={16}/>}{generating && committing ? 'Writing…' : push ? 'Commit and push' : 'Commit'}</button>
       </div>
     </div>
   </div>;

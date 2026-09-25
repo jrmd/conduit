@@ -24,7 +24,7 @@ try {
  await approval().getByRole('button',{name:'Allow once',exact:true}).click();
  await expect.poll(async()=>(await state()).messages.filter(m=>m.role==='user').map(m=>m.text)).toEqual(['Fixture conversation','First','Second']);
  await expect(approval()).toBeVisible();
- await message.fill('Correction');await page.getByRole('button',{name:'Steer now',exact:true}).click();
+ await submit('Correction');await page.getByRole('button',{name:'Steer queued message: Correction',exact:true}).click();
  await expect.poll(async()=>(await state()).messages.filter(m=>m.role==='user').map(m=>m.text)).toEqual(['Fixture conversation','First','Second','Correction']);
  await expect(approval()).toBeVisible();await expect(page.getByRole('region',{name:'Queued messages'})).toContainText('Third');
  await page.getByRole('button',{name:'Stop generation',exact:true}).click();
@@ -34,8 +34,9 @@ try {
  await expect(page.getByRole('button',{name:'Resume queue',exact:true})).toBeVisible({timeout:30000});
  await page.getByRole('button',{name:'Resume queue',exact:true}).click();await expect(approval()).toBeVisible();
  await expect.poll(async()=>(await state()).messages.filter(m=>m.role==='user').at(-1).text).toBe('Third');
- await submit('Fourth');await page.setViewportSize({width:430,height:800});await page.getByRole('button',{name:'Close sidebar',exact:true}).evaluate(button => button.click());await message.fill('Another correction');
- await expect(page.getByRole('button',{name:'Steer now',exact:true})).toBeVisible();
+ await submit('Fourth');await page.setViewportSize({width:430,height:800});await page.getByRole('button',{name:'Close sidebar',exact:true}).evaluate(button => button.click());await expect.poll(async()=>{const box=await page.locator('.sidebar').boundingBox();return box.x+box.width;}).toBeLessThanOrEqual(0);await message.fill('Another correction');
+ await expect(page.getByRole('button',{name:'Steer queued message: Fourth',exact:true})).toBeVisible();
+ await expect(page.locator('.composer .steer-button')).toHaveCount(0);
  const box=await page.locator('.composer').boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(431);
  await page.screenshot({path:'artifacts/message-queue-mobile.png'});
  await approval().getByRole('button',{name:'Allow once',exact:true}).click();

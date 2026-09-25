@@ -4,7 +4,7 @@ import { mkdtemp, chmod, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { buildProviderInvocation, discoverModels, parseClaudeModels, normalizeModelId, parseListedModels, parseProviderOutputLine, runProvider } from './providers';
+import { buildProviderInvocation, parseAcpModels, discoverModels, parseClaudeModels, normalizeModelId, parseListedModels, parseProviderOutputLine, runProvider } from './providers';
 
 describe('provider CLI invocation', () => {
   it('starts Codex in the selected project and resumes only the supplied session', () => {
@@ -265,4 +265,10 @@ it('Claude runner preserves repeated deltas and reconciles assistant snapshots',
     else process.env.PATH = originalPath;
     await rm(root, { recursive: true, force: true });
   }
+});
+
+it('ACP model variants preserve parameter syntax', async()=>{
+ const id='gpt-5.6-luna[reasoning=medium,fast=false]';
+ assert.equal(normalizeModelId(id),id);
+ assert.deepEqual(parseAcpModels({configOptions:[{id:'model',options:[{value:id,name:'GPT-5.6 Luna'}]}]}),[{id,label:'GPT-5.6 Luna',source:'discovered'}]);
 });
