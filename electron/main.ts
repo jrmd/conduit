@@ -1,3 +1,5 @@
+import { Questions } from '../core/questions';
+import { handoffBrief, planningInstructions, planTool, stepsFromMarkdown } from '../core/planning';
 import { prepareWorkspace, workspaceInfo } from '../core/workspaces';
 import { Approvals } from '../core/approvals';
 import { runWithDelegation } from '../core/delegation';
@@ -45,10 +47,11 @@ const providerIds = new Set<ProviderId>(['codex', 'claude', 'cursor', 'opencode'
 const assertId = (value: unknown) => { if (typeof value !== 'string' || value.length > 128) throw new Error('Invalid identifier'); return value; };
 const assertText = (value: unknown, max: number) => { if (typeof value !== 'string' || value.length > max) throw new Error('Invalid text'); return value; };
 const emit = (event: AppEvent) => { if (win && !win.isDestroyed()) win.webContents.send('j2code-event', event); };
+const questions = new Questions(requests => emit({type:'questions',questions:requests}));
 const approvals = new Approvals(requests => emit({type:'approvals',approvals:requests}));
 const snapshot = (): Snapshot => {
   const state = store.snapshot();
-  return { ...state, approvals:approvals.list(), threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) })), providers };
+  return { ...state, questions:questions.list(), approvals:approvals.list(), threads: state.threads.map(thread => ({ ...thread, running: active.has(thread.id) })), providers };
 };
 const emitSnapshot = () => emit({ type: 'snapshot', snapshot: snapshot() });
 const rendererFile = () => path.join(__dirname, 'renderer', 'index.html');
@@ -94,9 +97,20 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
     sessionWrite = sessionWrite.then(async () => { await store.updateThread(threadId, { sessionId: id }); })
       .catch(error => { emit({ type: 'provider', threadId, kind: 'error', text: `Could not save session: ${error instanceof Error ? error.message : String(error)}` }); });
   };
+  let receivedBrief = false;
+  const savePlan = async (update: Partial<import('../shared/api').Plan>) => {
+    if (controller.signal.aborted) return;
+    if(typeof update.brief === 'string' && update.brief.trim()) {
+      receivedBrief = true;
+      if(!update.steps && !thread.plan?.steps.length) update.steps = stepsFromMarkdown(update.brief);
+    }
+    await store.updateThread(threadId, {plan:{steps:thread.plan?.steps || [],brief:thread.plan?.brief || '',...update}});
+    emitSnapshot();
+  };
+  let planWrite = Promise.resolve();
   const task = (async () => {
     try {
-      const result = await runWithDelegation({ provider: thread.provider, cwd, prompt: prompt + references, attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'supervised', onApproval: (title, detail) => approvals.ask(threadId, title, detail, controller.signal), model: chosenModel, effort: chosenEffort, ...modelSettings, signal: controller.signal, onEvent: event => {
+      const result = await runWithDelegation({ provider: thread.provider, cwd, planning:thread.planning, tools:[planTool(savePlan)], onPlan: update => { planWrite = planWrite.then(()=>savePlan(update)); void planWrite.catch(()=>{}); }, onQuestion: qs => questions.ask(threadId, qs, controller.signal), prompt: [thread.planning ? planningInstructions : '', !thread.sessionId ? thread.handoff : '', prompt + references].filter(Boolean).join('\n\n'), attachments: files, sessionId: thread.sessionId, mode: thread.mode || 'supervised', onApproval: (title, detail) => approvals.ask(threadId, title, detail, controller.signal), model: chosenModel, effort: chosenEffort, ...modelSettings, signal: controller.signal, onEvent: event => {
         if (event.kind === 'activity' && event.activity) {
           const activity = store.recordActivity(threadId, runId, event.activity);
           emit({ type: 'activity', threadId, activity });
@@ -110,7 +124,10 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
       } }, providers.filter(p => p.available && !store.snapshot().disabledProviders.includes(p.id)).map(p => p.id), runProvider);
       if (result.sessionId) persistSession(result.sessionId);
       await sessionWrite;
+      await planWrite;
+      if(thread.planning && !receivedBrief && text.trim()) await savePlan({brief:text,steps:stepsFromMarkdown(text).length ? stepsFromMarkdown(text) : thread.plan?.steps || []});
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);
+      else if (receivedBrief && thread.plan?.brief) await store.appendMessage(threadId, 'assistant', thread.plan.brief);
       else await store.appendMessage(threadId, 'system', 'The CLI completed without a text response.');
     } catch (error) {
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);
@@ -119,8 +136,8 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
       emit({ type: 'provider', threadId, kind: 'error', text: message });
     } finally {
       if (flushTimer) clearTimeout(flushTimer);
-      try { await store.finishActivity(threadId, runId, controller.signal.aborted); await sessionWrite; }
-      finally { approvals.clear(threadId); active.delete(threadId); emitSnapshot(); }
+      try { await planWrite; await store.finishActivity(threadId, runId, controller.signal.aborted); await sessionWrite; }
+      finally { questions.clear(threadId); approvals.clear(threadId); active.delete(threadId); emitSnapshot(); }
     }
   })().catch(error => emit({ type: 'provider', threadId, kind: 'error', text: error instanceof Error ? error.message : 'Unable to save provider result' }));
   runs.add(task);
@@ -228,6 +245,17 @@ function registerIpc() {
     await store.removeProject(id);
     emitSnapshot();
   });
+  handle('respond-question', (id: unknown, threadId: unknown, answers: import('../shared/api').QuestionAnswers | null) => {
+    questions.respond(assertId(id), assertId(threadId), answers);
+  });
+  handle('handoff-plan', async (threadId: unknown) => {
+    const source = store.getThread(assertId(threadId));
+    if(active.has(source.id) || starting.has(source.id)) throw new Error('Wait for planning to finish');
+    const brief = handoffBrief(source, workspacePath(source.projectId, source.id));
+    const thread = await store.createThread(source.projectId, source.provider, source.mode, source.model, source.effort, source.workspace);
+    const saved = await store.updateThread(thread.id, {plan:structuredClone(source.plan),handoff:brief,sourceThreadId:source.id,title:`Implement: ${source.title}`,branch:source.branch,repository:source.repository,planning:false});
+    emitSnapshot(); return saved;
+  });
   handle('respond-approval', (id: unknown, threadId: unknown, allow: unknown) => {
     if (typeof allow !== 'boolean') throw new Error('Invalid approval decision');
     approvals.respond(assertId(id), assertId(threadId), allow);
@@ -258,7 +286,7 @@ function registerIpc() {
     const effort = await validateEffort(value.provider, model, value.effort);
     const modelSettings = await validateModelSettings(value.provider, model, value);
     if (active.has(id) || starting.has(id)) throw new Error('Wait for this run to finish');
-    const thread = await store.configureThread(id, { provider: value.provider, mode: value.mode, model, effort, contextWindow: modelSettings.contextWindow, fastMode: modelSettings.fastMode });
+    const thread = await store.configureThread(id, { provider: value.provider, mode: value.mode, planning:value.planning === undefined ? store.getThread(id).planning : value.planning === true, model, effort, contextWindow: modelSettings.contextWindow, fastMode: modelSettings.fastMode });
     emitSnapshot();
     return thread;
   });

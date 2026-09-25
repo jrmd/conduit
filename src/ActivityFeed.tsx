@@ -11,7 +11,7 @@ function LiveDetail({ text, live }: { text: string; live: boolean }) {
 }
 
 /** One turn's work stays between its prompt and answer, rather than in a separate dashboard. */
-export function ActivityFeed({ items, running, waiting }: { items: Activity[]; running?: boolean; waiting?: boolean }) {
+export function ActivityFeed({ items, running, waiting, waitingForQuestion }: { items: Activity[]; running?: boolean; waiting?: boolean; waitingForQuestion?: boolean }) {
   const [opened, setOpened] = useState<boolean | null>(null);
   const [showAll, setShowAll] = useState(false);
   if (!items.length && !running) return null;
@@ -32,8 +32,8 @@ export function ActivityFeed({ items, running, waiting }: { items: Activity[]; r
   }
   return <div className={`activity-feed activity-inline ${running ? 'is-live' : ''}`}>
     <button className="activity-toggle" aria-expanded={expanded} disabled={!items.length} onClick={() => setOpened(!expanded)}>
-      {waiting ? <CircleAlert size={13}/> : running ? <LoaderCircle size={13} className="spin" /> : <Check size={13} />}
-      <span role={running ? 'status' : undefined}>{waiting ? 'Waiting for approval' : running ? latest?.title || 'Working…' : `Worked through ${roots.length} ${roots.length === 1 ? 'step' : 'steps'}`}</span>
+      {waiting || waitingForQuestion ? <CircleAlert size={13}/> : running ? <LoaderCircle size={13} className="spin" /> : <Check size={13} />}
+      <span role={running ? 'status' : undefined}>{waitingForQuestion ? 'Waiting for your answer' : waiting ? 'Waiting for approval' : running ? latest?.title || 'Working…' : `Worked through ${roots.length} ${roots.length === 1 ? 'step' : 'steps'}`}</span>
       {agents.length > 0 && <small><Bot size={12} />{agents.length}</small>}
       {items.length > 0 && <ChevronRight size={12} className={expanded ? 'rotate-down' : ''} />}
     </button>

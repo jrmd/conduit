@@ -1,3 +1,7 @@
+import { QuestionCard } from './QuestionCard';
+import { PlanCard } from './PlanCard';
+import './planning.css';
+import type { QuestionRequest } from '../shared/api';
 import { ThreadPreview } from './ThreadPreview';
 import { ModelControls } from './ModelControls';
 import './model-controls.css';
@@ -90,6 +94,8 @@ export default function App() {
     try { localStorage.setItem('vulp.hidden-models', JSON.stringify(next)); } catch { notify('Could not save model visibility; it will last for this session.', 'error'); }
   }
   const [effortOpen, setEffortOpen] = useState(false);
+  const [planning, setPlanning] = useState(false);
+  const [questions, setQuestions] = useState<QuestionRequest[]>([]);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [answeringApproval, setAnsweringApproval] = useState<string | null>(null);
@@ -229,9 +235,11 @@ export default function App() {
     let mounted = true;
     const off = window.j2code.onEvent(event => {
       if (!mounted) return;
+      if (event.type === 'questions') setQuestions(event.questions);
       if (event.type === 'approvals') setApprovals(event.approvals);
       if (event.type === 'snapshot') {
         setApprovals(event.snapshot.approvals || []);
+        setQuestions(event.snapshot.questions || []);
         setSnapshot(event.snapshot);
         setStreamByThread(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => event.snapshot.threads.some(thread => thread.id === id && thread.running))));
         setActivityByThread(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => event.snapshot.threads.some(thread => thread.id === id && thread.running))));
@@ -260,6 +268,7 @@ export default function App() {
       if (!mounted) return;
       setSnapshot(data);
       setApprovals(data.approvals || []);
+      setQuestions(data.questions || []);
       const firstProject = data.projects[0];
       if (firstProject) {
         setActiveProjectId(firstProject.id);
@@ -361,8 +370,8 @@ export default function App() {
     let threadId = activeThreadId;
     try {
       if (!threadId) {
-        let thread = await window.j2code.createThread(activeProjectId, selectedProvider, selectedProvider === 'codex' || selectedProvider === 'claude' ? selectedMode : 'edit', selectedModels[selectedProvider] || undefined, selectedEffort || undefined, workspaceChoice);
-        if (selectedModelSettings.contextWindow !== undefined || selectedModelSettings.fastMode !== undefined) thread = await window.j2code.updateThreadConfig(thread.id, {provider: thread.provider, mode: thread.mode, model: thread.model, effort: thread.effort, ...selectedModelSettings});
+        let thread = await window.j2code.createThread(activeProjectId, selectedProvider, selectedMode, selectedModels[selectedProvider] || undefined, selectedEffort || undefined, workspaceChoice);
+        if (planning || selectedModelSettings.contextWindow !== undefined || selectedModelSettings.fastMode !== undefined) thread = await window.j2code.updateThreadConfig(thread.id, {provider: thread.provider, mode: thread.mode, model: thread.model, effort: thread.effort, planning, ...selectedModelSettings});
         setWorkspaceDrafts(previous => ({ ...previous, [activeProjectId]: { mode: 'local' } }));
         setSnapshot(previous => ({ ...previous, threads: [thread, ...previous.threads.filter(existing => existing.id !== thread.id)] }));
         setActiveThreadId(thread.id);
@@ -534,14 +543,15 @@ export default function App() {
   const renderSessions = (threads: Thread[], empty: string) => threads.length ? threads.map(thread => {
             const project = snapshot.projects.find(project => project.id === thread.projectId)!;
             const ProviderIcon = providerIcons[thread.provider];
-            const needsApproval = approvals.some(request => request.threadId === thread.id);
+            const needsQuestion = questions.some(request => request.threadId === thread.id);
+            const needsApproval = approvals.some(request => request.threadId === thread.id) || needsQuestion;
             const branch = thread.workspace?.mode === 'worktree' ? thread.branch : projectBranches[project.id];
             const hue = [...project.name].reduce((value, letter) => (value * 31 + letter.charCodeAt(0)) % 360, 0);
             return <ThreadPreview title={thread.title || 'New thread'} project={project.name} branch={branch} model={modelCatalogues[thread.provider]?.options.find(option => option.id === thread.model)?.label || thread.model || `${providerNames[thread.provider]} · Default`} icon={<ProviderIcon width={14} height={14}/>} className={`sidebar-thread session-card ${needsApproval || thread.running ? 'has-status' : ''} ${thread.settled ? 'settled-card' : ''}`} key={thread.id}>
               <button className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} aria-current={thread.id === activeThreadId ? 'page' : undefined} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}>
                 {!thread.settled && <span className="session-project-row"><span className="session-project-dot" style={{background:`hsl(${hue} 65% 58%)`}}/><span className="session-project-name" title={project.name}>{project.name}</span></span>}
                 <span className="session-title-row"><span className="thread-item-title" title={thread.title}>{thread.title || 'New thread'}</span>
-                  {thread.settled ? <time className="settled-age" title={new Date(thread.updatedAt).toLocaleString()}>{timeAgo(thread.updatedAt)}</time> : <span className={`session-status ${needsApproval ? 'needs-approval' : thread.running ? 'working' : ''}`}>{needsApproval ? <><CircleAlert size={12}/>Approval</> : thread.running ? <><span className="working-dot"/>Working</> : <time>{timeAgo(thread.updatedAt)}</time>}</span>}
+                  {thread.settled ? <time className="settled-age" title={new Date(thread.updatedAt).toLocaleString()}>{timeAgo(thread.updatedAt)}</time> : <span className={`session-status ${needsApproval ? 'needs-approval' : thread.running ? 'working' : ''}`}>{needsApproval ? <><CircleAlert size={12}/>{needsQuestion ? 'Question' : 'Approval'}</> : thread.running ? <><span className="working-dot"/>Working</> : <time>{timeAgo(thread.updatedAt)}</time>}</span>}
                 </span>
                 {!thread.settled && <span className="session-meta">{branch && <span className="session-branch" title={branch}><GitBranch size={11}/>{branch}</span>}{thread.pinned && <Pin size={11} className="session-pinned" aria-label="Pinned"/>}<span className="session-provider" title={providerNames[thread.provider]}><ProviderIcon width={13} height={13}/></span></span>}
               </button>
@@ -613,7 +623,7 @@ export default function App() {
                 <div className={`message-avatar ${message.role === 'assistant' ? 'agent-avatar' : ''}`}>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : <Terminal size={15} />}</div>
                 <div className="message-body"><div className="message-heading"><strong>{message.role === 'assistant' && <span className="message-agent-icon" aria-hidden="true"><ThreadIcon width={12} height={12}/></span>}{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : 'Agent stopped'}</strong><time>{timeAgo(message.createdAt)}</time></div><div className="message-text"><MessageMarkdown text={message.text}/></div>{message.attachments?.length ? <div className="message-attachments">{message.attachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview ? <img src={file.preview} alt={file.name}/> : <File size={16}/>}<span>{file.name}</span></span>)}</div> : null}{message.role==='assistant' && <button className="copy-response" aria-label="Copy response" onClick={async()=>{try{await window.j2code.copyText(message.text);setCopiedId(message.id);setTimeout(()=>setCopiedId(null),1800)}catch(error){notify(String(error),'error')}}}>{copiedId===message.id?<Check size={13}/>:<Copy size={13}/>}<span>{copiedId===message.id?'Copied':'Copy'}</span></button>}</div>
               </div>
-              {message.role === 'user' && <ActivityFeed waiting={approvals.some(request=>request.threadId===activeThread.id)} items={(activeThread.activity || []).filter(item => item.createdAt >= message.createdAt && item.createdAt < (activeThread.messages.slice(index + 1).find(next => next.role === 'user')?.createdAt ?? Infinity))} running={activeThread.running && !activeThread.messages.slice(index + 1).some(next => next.role === 'user')} />}
+              {message.role === 'user' && <ActivityFeed waitingForQuestion={questions.some(request=>request.threadId===activeThread.id)} waiting={approvals.some(request=>request.threadId===activeThread.id)} items={(activeThread.activity || []).filter(item => item.createdAt >= message.createdAt && item.createdAt < (activeThread.messages.slice(index + 1).find(next => next.role === 'user')?.createdAt ?? Infinity))} running={activeThread.running && !activeThread.messages.slice(index + 1).some(next => next.role === 'user')} />}
               </Fragment>)}
               {activeStream && <div className="message message-assistant streaming-message"><div className="message-avatar agent-avatar">{providerNames[activeThread.provider]}</div><div className="message-body"><div className="message-heading"><strong><span className="message-agent-icon" aria-hidden="true"><ThreadIcon width={12} height={12}/></span>{providerNames[activeThread.provider]}</strong><LoaderCircle className="spin" size={11} /></div><div className="message-text"><MessageMarkdown text={activeStream}/></div></div></div>}
 
@@ -621,10 +631,15 @@ export default function App() {
             : <div className="empty-conversation"><JrmdShader theme={theme}/><div className="new-thread-heading"><div className="new-thread-question" role="heading" aria-level={1}><span>What should we build in</span><ProjectPicker inline projects={snapshot.projects} current={activeProject} onSelect={project => { selectProject(project); setActiveThreadId(null); }} onOpen={pickProject}/><span className="question-mark">?</span></div></div></div>}
 
           {activeProject && <div className="composer-zone">
+            {activeThread?.plan && <PlanCard key={activeThread.id} thread={activeThread} onError={error=>notify(error,'error')} onHandoff={thread=>{
+              setSnapshot(previous=>({...previous,threads:[thread,...previous.threads.filter(t=>t.id!==thread.id)]}));
+              setActiveThreadId(thread.id); setDrafts(previous=>({...previous,[thread.id]:'Implement the saved plan.'}));
+            }}/>}
             {draftAttachments.length>0 && <div className="draft-attachments">{draftAttachments.map(file=><span className="attachment-chip" key={file.id}>{file.preview?<img src={file.preview} alt={file.name}/>:<File size={16}/>}<span>{file.name}<small>{file.mime.startsWith('image/')?'Image': 'Local file'} · {Math.max(1,Math.round(file.size/1024))} KB</small></span><button aria-label={`Remove ${file.name}`} disabled={sending || !!activeThread?.running} onClick={()=>setAttachmentDrafts(previous=>({...previous,[draftKey]:draftAttachments.filter(item=>item.id!==file.id)}))}><X size={12}/></button></span>)}</div>}
               <div className="composer" data-model-options-saving={modelOptionsSaving} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();void attachFiles(Array.from(event.dataTransfer.files))}}>
 
               {autocomplete.menu}
+              <div className="question-requests">{questions.filter(q=>q.threadId===activeThreadId).map(request=><QuestionCard key={request.id} request={request} onError={error=>notify(error,'error')}/>)}</div>
               <div className="approval-requests">{approvals.filter(request=>request.threadId === activeThreadId).map(request=><section className="approval-request" key={request.id} aria-label="Approval required"><strong>{request.title}</strong><pre>{request.detail}</pre><div>{[false,true].map(allow=><button key={String(allow)} disabled={answeringApproval === request.id} onClick={async()=>{setAnsweringApproval(request.id);try{await window.j2code.respondApproval(request.id,request.threadId,allow);}catch(error){notify(String(error),'error');}finally{setAnsweringApproval(null);}}}>{allow?'Allow once':'Deny'}</button>)}</div></section>)}</div>
               <textarea {...autocomplete.aria} onSelect={autocomplete.updateCaret} onBlur={autocomplete.dismiss} onPaste={event=>{const files=Array.from(event.clipboardData.files);if(files.length){event.preventDefault();void attachFiles(files)}}} ref={inputRef} placeholder={providerInstalled ? 'Ask anything… @ files · / skills & plugins' : 'Install an agent CLI to start…'} value={draft} onChange={event => { setDraft(event.target.value); autocomplete.updateCaret(); }} onKeyDown={event => { if (autocomplete.onKeyDown(event)) return; if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={!!activeThread?.running || sending} rows={2} aria-label="Message" />
               <div className="composer-bottom">
@@ -674,6 +689,12 @@ export default function App() {
                     } catch(error) { notify(String(error), 'error'); } finally { setModelBusy(false); setModelOptionsSaving(false); }
                   }}/></div>}
                 </div>
+                <button className="mode-select planning-toggle" aria-label="Plan mode" aria-pressed={activeThread?.planning ?? planning} disabled={!!activeThread?.running || sending || modelBusy} onClick={async()=>{
+                  if(!activeThread) {setPlanning(!planning);return;}
+                  setModelBusy(true);
+                  try {const updated=await window.j2code.updateThreadConfig(activeThread.id,{...activeThread,planning:!activeThread.planning});setSnapshot(previous=>({...previous,threads:previous.threads.map(t=>t.id===updated.id?updated:t)}));}
+                  catch(error){notify(String(error),'error');}finally{setModelBusy(false);}
+                }}>Plan</button>
                 <div className="approval-mode-wrap">
                   <button className="mode-select" aria-label="Approval mode" aria-expanded={approvalOpen} disabled={!!activeThread?.running || sending || modelBusy} onClick={() => { setApprovalOpen(!approvalOpen); setModelOpen(false); setEffortOpen(false); }}>{approvalModes.find(mode => mode.id === approvalMode(activeThread?.mode || selectedMode))?.label}<ChevronDown size={13}/></button>
                   {approvalOpen && <div className="approval-mode-menu" role="dialog" aria-label="Choose approval mode">{approvalModes.map(mode => <button key={mode.id} aria-pressed={approvalMode(activeThread?.mode || selectedMode) === mode.id} onClick={async () => {

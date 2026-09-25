@@ -1,5 +1,11 @@
 # Validation record
 
+## 0.7.0 — planning, questions and fresh-context handoff
+
+All 66 core tests, typecheck and Linux AppImage packaging pass. The packaged planning Electron smoke covers native-protocol question answers, pending-question renderer reload, checklist/brief persistence, a new thread without old history/session identity, and execution through a second fixture provider in the same workspace. Desktop and mobile screenshots were inspected using software-rendered X11. The packaged approval regression smoke also passes. Fixtures do not establish authenticated provider behavior.
+
+Live Codex asked a native question, received the selected answer and returned a saved two-step plan. Claude's live attempt was blocked by its account session limit; Cursor planning/questions remain protocol-fixture verified. See `docs/planning.md` for support boundaries and reproduction commands. Release 0.7.0 includes the previously committed Conduit rename, read-only cross-provider delegation and UI refinements since 0.6.0.
+
 ## 0.1.4 — compact controls, effort, and agent activity
 
 Empty saved threads can change provider and access mode; the main process rejects cross-provider changes after the first user message or a captured session. The composer model picker is an anchored 340×320 maximum popout with vertical provider-icon tabs. Effort choices come from the selected model's local capabilities, reset on model/provider change, persist per thread, and are validated again before execution. Codex uses `model_reasoning_effort`, Claude uses `--effort`, and OpenCode uses `--variant`. Cursor/unknown models stay on Auto without guessed levels. The installed Claude CLI initialization handshake and OpenCode verbose listing were exercised without model prompts; only model/capability fields are returned to the renderer, never account identity.

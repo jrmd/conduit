@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { AppEvent, DesktopApi } from '../shared/api.js';
 
 const api: DesktopApi = {
+  respondQuestion: (id, threadId, answers) => ipcRenderer.invoke('respond-question', id, threadId, answers),
+  handoffPlan: id => ipcRenderer.invoke('handoff-plan', id),
   getComposerItems: (id, provider, kind, query, threadId) => ipcRenderer.invoke('composer-items', id, provider, kind, query, threadId),
   threadPR: id => ipcRenderer.invoke('thread-pr', id),
   pinThread: (id, pinned) => ipcRenderer.invoke('pin-thread', id, pinned),

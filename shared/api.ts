@@ -1,3 +1,8 @@
+export interface PlanStep { text: string; status: 'pending' | 'in_progress' | 'completed' | 'cancelled'; }
+export interface Plan { steps: PlanStep[]; brief: string; }
+export interface Question { id: string; text: string; options: { value: string; label: string; description?: string }[]; multiple?: boolean; freeText?: boolean; secret?: boolean; }
+export type QuestionAnswers = Record<string, string[]>;
+export interface QuestionRequest { id: string; threadId: string; questions: Question[]; }
 export interface WorkspaceChoice { mode: 'local' | 'worktree'; branch?: string; newBranch?: string; }
 export interface ThreadWorkspace { path: string; mode: 'local' | 'worktree'; }
 export interface WorkspaceInfo { isRepository: boolean; current: string; branches: string[]; }
@@ -10,24 +15,27 @@ export interface Attachment { id: string; name: string; mime: string; size: numb
 export interface UpdateStatus { state: 'idle' | 'checking' | 'downloading' | 'ready' | 'current' | 'error' | 'unsupported'; version?: string; percent?: number; message?: string; }
 export interface Message { attachments?: Attachment[]; id: string; role: Role; text: string; createdAt: number; }
 export interface ModelSettings { contextWindow?: number; fastMode?: boolean; }
-export interface Thread extends ModelSettings { workspace?: ThreadWorkspace; branch?: string; branches?: string[]; repository?: string; summary?: string; settled?: boolean; pinned?: boolean; id: string; projectId: string; title: string; provider: ProviderId; mode: ThreadMode; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
+export interface Thread extends ModelSettings { planning?: boolean; plan?: Plan; handoff?: string; sourceThreadId?: string; workspace?: ThreadWorkspace; branch?: string; branches?: string[]; repository?: string; summary?: string; settled?: boolean; pinned?: boolean; id: string; projectId: string; title: string; provider: ProviderId; mode: ThreadMode; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
 export interface Project { id: string; name: string; path: string; createdAt: number; }
 export interface ProviderInfo { id: ProviderId; name: string; available: boolean; path?: string; version?: string; error?: string; }
 export interface ModelOption { id: string; label: string; source: 'discovered' | 'alias'; efforts?: string[]; contextWindows?: number[]; supportsFastMode?: boolean; }
 export interface ModelCatalogue { provider: ProviderId; options: ModelOption[]; warning?: string; }
-export interface ThreadConfig extends ModelSettings { provider: ProviderId; model?: string; effort?: string; mode: ThreadMode; }
+export interface ThreadConfig extends ModelSettings { planning?: boolean; provider: ProviderId; model?: string; effort?: string; mode: ThreadMode; }
 export interface Activity { id: string; runId: string; kind: 'reasoning' | 'tool' | 'agent' | 'status'; title: string; detail: string; status: 'running' | 'completed' | 'failed' | 'interrupted' | 'unknown'; parentId?: string; agentId?: string; provider?: ProviderId; model?: string; sessionId?: string; createdAt: number; updatedAt: number; }
 export type ActivityUpdate = Omit<Activity, 'runId' | 'createdAt' | 'updatedAt'> & { append?: boolean };
-export interface Snapshot { approvals?: ApprovalRequest[]; projects: Project[]; threads: Thread[]; providers: ProviderInfo[]; disabledProviders: ProviderId[]; }
+export interface Snapshot { questions?: QuestionRequest[]; approvals?: ApprovalRequest[]; projects: Project[]; threads: Thread[]; providers: ProviderInfo[]; disabledProviders: ProviderId[]; }
 export interface ChangedFile { path: string; previousPath?: string; status: string; staged: boolean; unstaged: boolean; untracked: boolean; }
 export interface GitStatus { branch: string; files: ChangedFile[]; ahead: number; behind: number; remote?: string; pushTarget?: string; isRepository: boolean; }
-export type AppEvent = { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
+export type AppEvent = { type: 'questions'; questions: QuestionRequest[] } | { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
 export interface CommitMessageInput { threadId?: string; projectId: string; files: string[]; provider: ProviderId; model?: string; }
 export interface CommitInput { threadId?: string; projectId: string; files: string[]; message: string; }
 export interface PRInput { threadId?: string; projectId: string; title: string; body: string; base?: string; draft: boolean; }
 export interface ComposerItem { id: string; kind: 'file' | 'skill' | 'plugin'; name: string; description: string; token: string; path?: string; }
 export interface SendOptions { title?: { provider: ProviderId; model?: string }; references?: string[]; }
 export interface DesktopApi {
+  respondQuestion(id: string, threadId: string, answers: QuestionAnswers | null): Promise<void>;
+  handoffPlan(threadId: string): Promise<Thread>;
+
   respondApproval(id: string, threadId: string, allow: boolean): Promise<void>;
   getComposerItems(projectId: string, provider: ProviderId, kind: 'file' | 'capability', query: string, threadId?: string): Promise<{items: ComposerItem[]; warning?: string}>;
   threadPR(threadId: string): Promise<{number: number; url: string; state: string; title: string} | null>;

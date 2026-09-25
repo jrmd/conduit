@@ -103,7 +103,7 @@ export class Store {
     this.getThread(id).pinned = pinned;
     await this.save();
   }
-  async updateThread(id: string, update: Partial<Pick<Thread, 'sessionId' | 'running' | 'model' | 'effort' | 'contextWindow' | 'fastMode' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
+  async updateThread(id: string, update: Partial<Pick<Thread, 'planning' | 'plan' | 'handoff' | 'sourceThreadId' | 'sessionId' | 'running' | 'model' | 'effort' | 'contextWindow' | 'fastMode' | 'branch' | 'branches' | 'repository' | 'summary' | 'settled' | 'title'>>) {
     const thread = this.getThread(id);
     Object.assign(thread, update);
     thread.updatedAt = Date.now();

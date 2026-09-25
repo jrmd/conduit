@@ -24,6 +24,10 @@ export interface ProviderRunEvent {
 }
 
 export interface RunProviderArgs {
+  planning?: boolean;
+  onPlan?: (plan: Partial<import('../shared/api').Plan>) => void;
+  onQuestion?: (questions: import('../shared/api').Question[]) => Promise<import('../shared/api').QuestionAnswers | null>;
+
   tools?: readonly ProviderTool[];
   readOnlyChild?: boolean;
   attachments?: ResolvedAttachment[];

@@ -142,6 +142,6 @@ export async function callProviderTool(tools: readonly ProviderTool[], name: str
 export async function runWithDelegation(input: RunProviderArgs, enabled: readonly ProviderId[], run: ProviderRunner) {
   if (input.readOnlyChild || !['codex', 'claude'].includes(input.provider)) return run(input);
   const delegation = new Delegation(input, enabled, run);
-  try { return await run({ ...input, tools: delegation.tools }); }
+  try { return await run({ ...input, tools: [...(input.tools || []), ...delegation.tools] }); }
   finally { await delegation.close(); }
 }

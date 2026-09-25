@@ -65,3 +65,29 @@ test('Codex children force read-only access and disable inherited MCP, apps and 
   assert.equal(params.dynamicTools,undefined);
  } finally {await rm(dir,{recursive:true,force:true});}
 });
+
+test('native plan modes, checklist events and provider-specific question answers round trip', {skip:process.platform==='win32'}, async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'conduit-planning-rpc-'));const executable=join(dir,'provider');
+ try {
+  await copyFile('scripts/fixtures/planning-provider.mjs',executable);await chmod(executable,0o755);
+  for(const provider of ['codex','cursor'] as ProviderId[]) {
+   const log=join(dir,provider+'.jsonl');const plans:any[]=[];let asked=0;
+   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),5000);
+   try {
+    await runInteractiveProvider({provider,cwd:dir,prompt:'Plan persistence',planning:true,mode:'full-access',signal:controller.signal,onPlan:plan=>plans.push(plan),onQuestion:async qs=>{asked++;assert.equal(qs[0].text,'Which storage?');return {storage:[qs[0].options[0].value]};},onEvent:()=>{}},executable,{...process.env,VULP_PROTOCOL_LOG:log});
+    assert.equal(asked,1);assert.equal(plans[0].steps[0].status,'completed');
+    const records=(await readFile(log,'utf8')).trim().split('\n').map(line=>JSON.parse(line));
+    const answer=records.find(r=>r.id==='question').result;
+    if(provider==='codex') {
+     assert.deepEqual(answer,{answers:{storage:{answers:['SQLite']}}});
+     assert.equal(records.find(r=>r.method==='thread/start').params.sandbox,'read-only');
+     assert.equal(records.find(r=>r.method==='turn/start').params.collaborationMode.mode,'plan');
+     assert.match(plans[1].brief,/Decision: use SQLite/);
+    } else {
+     assert.deepEqual(answer,{outcome:{outcome:'answered',answers:[{questionId:'storage',selectedOptionIds:['sqlite']}]}});
+     assert.equal(records.find(r=>r.method==='session/set_mode').params.modeId,'plan');
+    }
+   } finally {clearTimeout(timeout);}
+  }
+ } finally {await rm(dir,{recursive:true,force:true});}
+});
