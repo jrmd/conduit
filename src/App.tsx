@@ -539,10 +539,11 @@ export default function App() {
             const hue = [...project.name].reduce((value, letter) => (value * 31 + letter.charCodeAt(0)) % 360, 0);
             return <ThreadPreview title={thread.title || 'New thread'} project={project.name} branch={branch} model={modelCatalogues[thread.provider]?.options.find(option => option.id === thread.model)?.label || thread.model || `${providerNames[thread.provider]} · Default`} icon={<ProviderIcon width={14} height={14}/>} className={`sidebar-thread session-card ${needsApproval || thread.running ? 'has-status' : ''} ${thread.settled ? 'settled-card' : ''}`} key={thread.id}>
               <button className={`thread-item ${thread.id === activeThreadId ? 'active' : ''}`} aria-current={thread.id === activeThreadId ? 'page' : undefined} onContextMenu={event => { event.preventDefault(); setContextMenu({x:event.clientX,y:event.clientY,projectId:project.id,threadId:thread.id}); }} onClick={() => { setSettingsOpen(false); setActiveProjectId(project.id); setActiveThreadId(thread.id); setSidebarOpen(false); }}>
+                {!thread.settled && <span className="session-project-row"><span className="session-project-dot" style={{background:`hsl(${hue} 65% 58%)`}}/><span className="session-project-name" title={project.name}>{project.name}</span></span>}
                 <span className="session-title-row"><span className="thread-item-title" title={thread.title}>{thread.title || 'New thread'}</span>
                   {thread.settled ? <time className="settled-age" title={new Date(thread.updatedAt).toLocaleString()}>{timeAgo(thread.updatedAt)}</time> : <span className={`session-status ${needsApproval ? 'needs-approval' : thread.running ? 'working' : ''}`}>{needsApproval ? <><CircleAlert size={12}/>Approval</> : thread.running ? <><span className="working-dot"/>Working</> : <time>{timeAgo(thread.updatedAt)}</time>}</span>}
                 </span>
-                {!thread.settled && <span className="session-meta"><span className="session-project-dot" style={{background:`hsl(${hue} 65% 58%)`}}/><span className="session-project-name">{project.name}</span>{branch && <span className="session-branch" title={branch}><GitBranch size={11}/>{branch}</span>}{thread.pinned && <Pin size={11} className="session-pinned" aria-label="Pinned"/>}<span className="session-provider" title={providerNames[thread.provider]}><ProviderIcon width={13} height={13}/></span></span>}
+                {!thread.settled && <span className="session-meta">{branch && <span className="session-branch" title={branch}><GitBranch size={11}/>{branch}</span>}{thread.pinned && <Pin size={11} className="session-pinned" aria-label="Pinned"/>}<span className="session-provider" title={providerNames[thread.provider]}><ProviderIcon width={13} height={13}/></span></span>}
               </button>
               <div className="session-actions">
                 <button className="session-pin" aria-label={`${thread.pinned ? 'Unpin' : 'Pin'} ${thread.title}`} title={thread.pinned ? 'Unpin thread' : 'Pin thread'} aria-pressed={!!thread.pinned} onClick={() => pin(thread.id)}>{thread.pinned ? <PinOff size={13}/> : <Pin size={13}/>}</button>
@@ -560,7 +561,7 @@ export default function App() {
     </div>}
     <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <div className="sidebar-top">
-        <div className="brand" title="Conduit"><img className="conduit-brand-logo" src="./conduit-mark.png" alt="" /><span>Conduit</span></div>
+        <div className="brand" title="Conduit"><img className="conduit-brand-logo" src="./conduit-mark.svg" alt="" /><span>Conduit</span></div>
         <button className="icon-button sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={() => setSidebarCollapsed(true)}><PanelLeftClose size={17}/></button>
         <button className="icon-button sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={17} /></button>
       </div>
@@ -606,7 +607,7 @@ export default function App() {
       <div className="work-area">
         <section className="conversation">
           {loading ? <div className="center-state"><LoaderCircle className="spin" size={24} /><p>Opening workspace…</p></div>
-            : !activeProject ? <div className="welcome-state"><JrmdShader theme={theme}/><img className="conduit-hero-logo" src="./conduit-mark.png" alt="Conduit logo" /><h1>Open a project</h1><p>Choose a local folder to start working with a coding agent.</p><button className="primary-button" onClick={pickProject}><Plus size={15} /> Open folder</button></div>
+            : !activeProject ? <div className="welcome-state"><JrmdShader theme={theme}/><img className="conduit-hero-logo" src="./conduit-mark.svg" alt="Conduit logo" /><h1>Open a project</h1><p>Choose a local folder to start working with a coding agent.</p><button className="primary-button" onClick={pickProject}><Plus size={15} /> Open folder</button></div>
             : activeThread && activeThread.messages.length > 0 ? <div className="messages-scroll" ref={messagesScrollRef} onScroll={event => { const el = event.currentTarget; nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90; }}><div className="messages-inner">
               {activeThread.messages.map((message, index) => <Fragment key={message.id}><div className={`message message-${message.role}`}>
                 <div className={`message-avatar ${message.role === 'assistant' ? 'agent-avatar' : ''}`}>{message.role === 'user' ? 'You' : message.role === 'assistant' ? providerNames[activeThread.provider] : <Terminal size={15} />}</div>

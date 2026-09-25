@@ -38,6 +38,14 @@ try {
   await expect(page.locator('.session-card')).toHaveCount(3);
   const projectCard = page.locator('.session-card').filter({hasText:'Project picker'});
   const legacyCard = page.locator('.session-card').filter({hasText:'Simplify the onboarding flow'});
+  const projectHeading = await projectCard.locator('.session-project-row').boundingBox();
+  const conversationTitle = await projectCard.locator('.session-title-row').boundingBox();
+  const metadata = await projectCard.locator('.session-meta').boundingBox();
+  expect(projectHeading.y + projectHeading.height).toBeLessThanOrEqual(conversationTitle.y);
+  expect(conversationTitle.y + conversationTitle.height).toBeLessThanOrEqual(metadata.y);
+  expect(await page.locator('.brand').evaluate(el => parseFloat(getComputedStyle(el).gap))).toBeGreaterThanOrEqual(12);
+  expect(await page.locator('.brand>span').evaluate(el => parseFloat(getComputedStyle(el).letterSpacing))).toBeGreaterThanOrEqual(0);
+
   await expect(legacyCard.locator('.session-branch')).toHaveText('main');
   await expect(page.locator('.session-card').filter({hasText:'Second project'}).locator('.session-branch')).toHaveCount(0);
   execFileSync('git', ['checkout', '-qb', 'feature/sidebar'], {cwd:repo});

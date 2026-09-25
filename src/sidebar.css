@@ -1,9 +1,9 @@
 /* Session-first navigation, with project management one click away. */
 html[data-theme] .quiet-focus .sidebar { width:264px; min-width:264px; background:var(--q-sidebar); border-right:1px solid var(--q-line); }
 html[data-theme] .quiet-focus .sidebar-top { height:56px; min-height:56px; padding:0 18px 0 20px; }
-html[data-theme] .quiet-focus .brand { font-size:18px; gap:9px; letter-spacing:-.6px; }
-html[data-theme] .quiet-focus .brand>span { background:var(--q-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:650; }
-html[data-theme] .quiet-focus .conduit-brand-logo { width:26px; height:26px; border-radius:0; }
+html[data-theme] .quiet-focus .brand { font-size:18px; gap:12px; letter-spacing:0; }
+html[data-theme] .quiet-focus .brand>span { background:var(--q-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:600; letter-spacing:.2px; line-height:1.25; }
+html[data-theme] .quiet-focus .conduit-brand-logo { width:30px; height:30px; border-radius:0; }
 html[data-theme] .quiet-focus .sidebar-collapse { margin-left:auto; }
 html[data-theme] .quiet-focus .sidebar-reopen { flex-shrink:0; }
 
@@ -16,7 +16,7 @@ html[data-theme] .quiet-focus .sidebar-projects { margin:0 12px 10px; padding:5p
 html[data-theme] .quiet-focus .sidebar-projects .project-row-action { opacity:1; }
 html[data-theme] .quiet-focus .sidebar-content.session-list { padding:0 10px 14px; overflow-y:auto; }
 
-/* Thread cards: title and live status, then project, branch and agent. */
+/* Thread cards: project heading, conversation/status, then branch and agent. */
 html[data-theme] .quiet-focus .session-card { margin:0 0 2px; }
 html[data-theme] .quiet-focus .session-card .thread-item,
 html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .thread-item { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:0; padding:9px 12px 9px 14px; border-radius:9px; line-height:18px; background:transparent; }
@@ -32,11 +32,12 @@ html[data-theme] .quiet-focus .session-status svg { color:inherit; }
 html[data-theme] .quiet-focus .working-dot { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 0 0 currentColor; animation:working-pulse 1.6s ease-out infinite; }
 @keyframes working-pulse { 0% { box-shadow:0 0 0 0 color-mix(in srgb,currentColor 60%,transparent); } 70%,100% { box-shadow:0 0 0 6px transparent; } }
 html[data-theme] .quiet-focus .session-card .thread-item time { display:block; opacity:1; margin:0; color:inherit; font-size:10px; font-variant-numeric:tabular-nums; }
+html[data-theme] .quiet-focus .session-project-row { display:flex; align-items:center; gap:7px; min-width:0; color:var(--q-muted); font-size:11px; font-weight:550; }
 html[data-theme] .quiet-focus .session-meta { display:flex; align-items:center; gap:6px; min-width:0; font-size:11px; color:var(--q-muted); }
 html[data-theme] .quiet-focus .session-project-dot { flex:none; width:7px; height:7px; border-radius:50%; }
 html[data-theme] .quiet-focus .session-project-name { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 html[data-theme] .quiet-focus .session-branch { display:flex; align-items:center; gap:4px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-html[data-theme] .quiet-focus .session-branch:before { content:'·'; margin-right:2px; opacity:.6; }
+html[data-theme] .quiet-focus .session-branch:before { content:none; }
 html[data-theme] .quiet-focus .session-branch svg { flex:none; opacity:.65; }
 html[data-theme] .quiet-focus .session-pinned { flex:none; color:var(--q-muted); }
 html[data-theme] .quiet-focus .session-provider { display:flex; margin-left:auto; flex:none; opacity:.5; }
@@ -50,6 +51,7 @@ html[data-theme] .quiet-focus .session-actions button { display:flex; align-item
 html[data-theme] .quiet-focus .session-actions button:hover { color:var(--q-text); background:var(--q-hover); }
 html[data-theme] .quiet-focus .session-actions button:disabled { opacity:.4; cursor:default; }
 html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .session-status:not(.working):not(.needs-approval) { opacity:0; }
+html[data-theme] .quiet-focus .session-card:not(.settled-card) .session-actions { top:29px; }
 html[data-theme] .quiet-focus .session-card.has-status:not(.settled-card) .session-actions { top:auto; bottom:6px; }
 html[data-theme] .quiet-focus .session-card.has-status:is(:hover,:focus-within) .session-provider { opacity:0; }
 

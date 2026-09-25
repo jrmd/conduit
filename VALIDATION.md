@@ -151,3 +151,9 @@ Updated visible branding, supplied logo, package/executable/artifact names, GitH
 `pnpm dev` now uses a launcher that copies Electron into a cached `Conduit.app` on macOS, sets bundle display/name/icon metadata, generates ICNS using system tools, and ad-hoc signs the modified bundle. The main process also sets the macOS Dock icon. Shared pnpm Electron files are untouched.
 
 Validation: typecheck, all 63 unit tests, production build, Linux unpacked packaging, and development/packaged renderer smokes passed. Packaged smoke asserts the Conduit app name, document title, sidebar label, and loaded logo; UI checks cover 1440/850/430 widths, settings, Git review, light/dark, and no renderer errors. Desktop/mobile screenshots were visually inspected. These are Linux software-rendered Electron checks with fixture conversations, not native macOS or authenticated provider verification. The macOS launcher passes JavaScript syntax checking but still needs a native Mac run. No new release was published.
+
+## Conduit icon and sidebar refinement (2026-09-25)
+
+Replaced the supplied bitmap with a simplified transparent vector derivative and 1024px PNG export. Increased sidebar logo size and logo/text spacing, removed negative wordmark tracking, and moved the project label onto its own row above the conversation title and branch/provider metadata. Hover actions remain aligned with the conversation/status row.
+
+Typecheck and production build passed. The sidebar Electron fixture smoke passed with checks for the three-row order and wordmark spacing, plus existing hover, tooltip, pin/settle, persistence, branch-change, light/dark and 1440/850/430 viewport coverage. Desktop and mobile screenshots were inspected. These are Linux renderer checks, not native macOS Dock verification.
