@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-type Appearance = 'system' | 'light' | 'dark';
+export type Appearance = 'system' | 'light' | 'dark';
 const storageKey = 'vulp.appearance';
 function readAppearance(): Appearance {
   try {

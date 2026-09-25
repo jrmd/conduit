@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Bot, Brain, Check, ChevronRight, Terminal, LoaderCircle, CircleAlert } from 'lucide-react';
 import type { Activity } from '../shared/api';
+
+/** Streaming detail stays pinned to its newest line unless the reader has scrolled up. */
+function LiveDetail({ text, live }: { text: string; live: boolean }) {
+  const ref = useRef<HTMLPreElement>(null);
+  const pinned = useRef(true);
+  useLayoutEffect(() => { const el = ref.current; if (el && live && pinned.current) el.scrollTop = el.scrollHeight; }, [text, live]);
+  return <pre ref={ref} className={live ? 'is-live' : undefined} onScroll={event => { const el = event.currentTarget; pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24; }}>{text}</pre>;
+}
 
 /** One turn's work stays between its prompt and answer, rather than in a separate dashboard. */
 export function ActivityFeed({ items, running, waiting }: { items: Activity[]; running?: boolean; waiting?: boolean }) {
@@ -18,7 +26,7 @@ export function ActivityFeed({ items, running, waiting }: { items: Activity[]; r
     const children = depth < 4 ? items.filter(child => child.parentId === item.id && child.id !== item.id) : [];
     return <details className={`activity-item activity-${item.status}`} key={item.id}>
       <summary>{icon(item)}<span>{item.title}</span>{item.status !== 'completed' && <small>{item.status === 'unknown' ? 'unreported' : item.status}</small>}<ChevronRight size={12} /></summary>
-      {item.detail && <pre>{item.detail}</pre>}
+      {item.detail ? <LiveDetail text={item.detail} live={item.status === 'running'}/> : item.kind === 'reasoning' && <p className="activity-placeholder">{item.status === 'running' ? 'Waiting for the agent’s thinking summary…' : 'The agent did not provide a thinking summary.'}</p>}
       {children.length > 0 && <div className="activity-children">{children.map(child => row(child, depth + 1))}</div>}
     </details>;
   }

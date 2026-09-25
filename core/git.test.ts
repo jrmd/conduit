@@ -4,7 +4,8 @@ import { mkdtemp, writeFile, mkdir, rm, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { gitCommit, gitDiff, gitPush, gitStatus } from './git.js';
+import { commitContext, gitCommit, gitDiff, gitPush, gitStatus } from './git.js';
+import { normalizeCommitMessage } from './thread-title.js';
 
 function git(cwd: string, ...args: string[]) { return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim(); }
 async function repo() {
@@ -93,4 +94,43 @@ test('push publishes only the current branch even with push.default=matching', a
     assert.equal(git(bare, 'rev-parse', `refs/heads/${primary}`), git(dir, 'rev-parse', primary));
     assert.notEqual(git(bare, 'rev-parse', 'refs/heads/other'), git(dir, 'rev-parse', 'other'));
   } finally { await rm(dir, { recursive: true, force: true }); await rm(bare, { recursive: true, force: true }); }
+});
+
+test('commit context covers only chosen files, includes new files and truncates large diffs', async () => {
+  const dir = await repo();
+  try {
+    await writeFile(path.join(dir, 'selected.txt'), 'selected\n');
+    await writeFile(path.join(dir, 'unrelated.txt'), 'secret unrelated change\n');
+    await writeFile(path.join(dir, 'new.txt'), 'brand new\n');
+    const context = await commitContext(dir, ['selected.txt', 'new.txt']);
+    assert.match(context.files, /M selected\.txt/);
+    assert.match(context.files, /A new\.txt/);
+    assert.match(context.diff, /\+selected/);
+    assert.match(context.diff, /New file: new\.txt\n\+brand new/);
+    assert.doesNotMatch(context.diff, /unrelated/);
+    assert.equal(context.recent, 'initial');
+    const small = await commitContext(dir, ['selected.txt'], 20);
+    assert.match(small.diff, /diff truncated\)$/);
+    await assert.rejects(commitContext(dir, ['missing.txt']), /Select current changed files/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('commit messages keep subject and body without wrappers', () => {
+  assert.equal(normalizeCommitMessage('```\nAdd commit generation.\n\nExplain why.\n```'), 'Add commit generation\n\nExplain why.');
+  assert.equal(normalizeCommitMessage('Commit message: "Fix sidebar"'), 'Fix sidebar');
+  assert.throws(() => normalizeCommitMessage('  '), /no commit message/);
+});
+
+
+test('first commit context describes the working file, including edits after staging', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'vulp-first-context-'));
+  try {
+    git(dir, 'init', '-q');
+    await writeFile(path.join(dir, 'new.txt'), 'staged version\n');
+    git(dir, 'add', 'new.txt');
+    await writeFile(path.join(dir, 'new.txt'), 'working version\n');
+    const context = await commitContext(dir, ['new.txt']);
+    assert.match(context.diff, /\+working version/);
+    assert.doesNotMatch(context.diff, /staged version/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });

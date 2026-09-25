@@ -7,7 +7,6 @@
   "desktopName": "vulp",
   "main": "dist/main.cjs",
   "scripts": {
-    "sketch:picker": "vite --host 127.0.0.1 --port 5180 --open /?picker-sketch",
     "build:main": "node scripts/build-main.mjs",
     "build": "vite build && npm run build:main",
     "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env J2CODE_DEV_URL=http://127.0.0.1:5173 electron .\"",

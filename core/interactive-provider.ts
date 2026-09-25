@@ -28,7 +28,8 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
     const run = query({prompt:prompt(),options:{cwd:input.cwd,env,pathToClaudeCodeExecutable:executable,abortController:controller,
       resume:input.sessionId,model:input.model,
       settings:{fastMode:input.fastMode ?? false},includePartialMessages:true,settingSources:["user","project","local"],
-      ...(input.effort ? {extraArgs:{effort:input.effort}} : {}),
+      // Recent models omit thinking text unless a summarized display is requested.
+      extraArgs:{"thinking-display":"summarized",...(input.effort ? {effort:input.effort} : {})},
       permissionMode:mode === "full-access" ? "bypassPermissions" : mode === "auto-edits" ? "acceptEdits" : mode === "auto" ? "auto" : "default",
       allowDangerouslySkipPermissions:mode === "full-access",
       canUseTool:async (name,params) => await ask(name,params) ? {behavior:"allow",updatedInput:params} : {behavior:"deny",message:"Denied by the user"},
@@ -53,19 +54,36 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
   rpc.onFailure=rejectTurn;
   const items=new Map<string,any>();
   let prompting=false;
+  // ACP streams thoughts as chunks without an item ID; each run of chunks becomes one Thinking step.
+  let thought:string|undefined; let thoughts=0;
+  const settleThought=()=>{ if(thought) input.onEvent({kind:"activity",text:"Thinking",activity:{id:thought,kind:"reasoning",title:"Thinking",detail:"",status:"completed",append:true}}); thought=undefined; };
   rpc.onNotification=(method,p)=>{
     if(!prompting) return; // Loading an existing session must not replay old messages.
     if(codex) {
       if(method==="item/agentMessage/delta") input.onEvent({kind:"text",text:p.delta || "",sessionId});
       if(method==="item/started" || method==="item/completed") {
         const item=p.item; if(!item) return; items.set(item.id,item);
-        if(item.type!=="agentMessage") input.onEvent({kind:"activity",text:item.type,activity:{id:item.id,kind:item.type==="reasoning"?"reasoning":"tool",title:item.command || item.type,detail:JSON.stringify(item,null,2),status:method==="item/started"?"running":["failed","declined"].includes(item.status)?"failed":"completed"}});
+        const status=method==="item/started"?"running":["failed","declined"].includes(item.status)?"failed":"completed";
+        if(item.type==="reasoning") {
+          // Summary deltas stream below; on start keep what has streamed, on completion settle the full text.
+          const detail=method==="item/completed" ? [...(item.summary || []),...(item.content || [])].join("\n\n") : "";
+          input.onEvent({kind:"activity",text:"Thinking",activity:{id:item.id,kind:"reasoning",title:"Thinking",detail,status,append:method==="item/started" || !detail}});
+        } else if(item.type!=="agentMessage") input.onEvent({kind:"activity",text:item.type,activity:{id:item.id,kind:"tool",title:item.command || item.type,detail:JSON.stringify(item,null,2),status}});
+      }
+      if(method==="item/reasoning/summaryTextDelta" || method==="item/reasoning/textDelta" || method==="item/reasoning/summaryPartAdded") {
+        const delta=method==="item/reasoning/summaryPartAdded" ? (p.summaryIndex > 0 ? "\n\n" : "") : p.delta || "";
+        if(delta) input.onEvent({kind:"activity",text:"Thinking",activity:{id:p.itemId,kind:"reasoning",title:"Thinking",detail:delta,status:"running",append:true}});
       }
       if(method==="turn/completed") { if(p.turn?.status==="failed") rejectTurn(new Error(p.turn.error?.message || "Codex turn failed")); else resolveTurn(); }
     } else if(method==="session/update") {
       const u=p.update;
-      if(u?.sessionUpdate==="agent_message_chunk" && u.content?.type==="text") input.onEvent({kind:"text",text:u.content.text,sessionId});
+      if(u?.sessionUpdate==="agent_message_chunk" && u.content?.type==="text") { settleThought(); input.onEvent({kind:"text",text:u.content.text,sessionId}); }
+      if(u?.sessionUpdate==="agent_thought_chunk" && u.content?.type==="text") {
+        thought ??= `thought-${thoughts++}`;
+        input.onEvent({kind:"activity",text:"Thinking",activity:{id:thought,kind:"reasoning",title:"Thinking",detail:u.content.text,status:"running",append:true}});
+      }
       if(u?.sessionUpdate==="tool_call" || u?.sessionUpdate==="tool_call_update") {
+        settleThought();
         const item={...items.get(u.toolCallId),...u};items.set(u.toolCallId,item);
         input.onEvent({kind:"activity",text:item.title || "Tool",activity:{id:u.toolCallId,kind:"tool",title:item.title || "Tool",detail:JSON.stringify(item.rawInput || item.content || {},null,2),status:item.status==="completed"?"completed":item.status==="failed"?"failed":"running"}});
       }
@@ -96,7 +114,7 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
       const permissions=codexPermissions(mode);
       const result=await rpc.request(sessionId?"thread/resume":"thread/start",{...(sessionId?{threadId:sessionId}:{}),cwd:input.cwd,model:input.model,...permissions, config:input.contextWindow === undefined ? {} : {model_context_window:input.contextWindow}});
       sessionId=result.thread.id;input.onEvent({kind:"status",text:"Session started",sessionId});prompting=true;
-      await rpc.request("turn/start",{threadId:sessionId,input:[{type:"text",text,text_elements:[]},...images.map(file=>({type:"localImage",path:file.path}))],effort:input.effort || null, serviceTierForTurn:input.fastMode ? "priority" : "default"});
+      await rpc.request("turn/start",{summary:"auto",threadId:sessionId,input:[{type:"text",text,text_elements:[]},...images.map(file=>({type:"localImage",path:file.path}))],effort:input.effort || null, serviceTierForTurn:input.fastMode ? "priority" : "default"});
       await finished;
     } else {
       const initialized=await rpc.request("initialize",{protocolVersion:1,clientCapabilities:{},clientInfo:{name:"vulp",version:"0.5.0"}});
@@ -124,6 +142,7 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
       }
       prompting=true;
       await rpc.request("session/prompt",{sessionId,prompt:[{type:"text",text},...images.map(file=>({type:"image",mimeType:file.mime,data:file.data.toString("base64")}))]});
+      settleThought();
     }
     return {sessionId};
   } finally {rpc.close();}

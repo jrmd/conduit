@@ -33,6 +33,7 @@ const api: DesktopApi = {
   getGit: (projectId, threadId) => ipcRenderer.invoke('git-status', projectId, threadId),
   getDiff: (projectId, file, threadId) => ipcRenderer.invoke('git-diff', projectId, file, threadId),
   commit: input => ipcRenderer.invoke('git-commit', input),
+  generateCommitMessage: input => ipcRenderer.invoke('generate-commit-message', input),
   push: (projectId, threadId) => ipcRenderer.invoke('git-push', projectId, threadId),
   createPR: input => ipcRenderer.invoke('create-pr', input),
   openExternal: url => ipcRenderer.invoke('open-external', url),

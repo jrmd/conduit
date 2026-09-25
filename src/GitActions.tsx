@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, ChevronDown, GitCommitHorizontal, GitPullRequest } from 'lucide-react';
 
-export function GitActions({ repository, selectedCount, pushTarget, onAction }: {
+export function GitActions({ repository, changedCount, selectedCount, pushTarget, onAction }: {
   repository: boolean;
+  changedCount: number;
   selectedCount: number;
   pushTarget?: string;
   onAction(action: 'commit' | 'push' | 'pr'): void;
@@ -39,7 +40,7 @@ export function GitActions({ repository, selectedCount, pushTarget, onAction }: 
   }}>
     <button ref={trigger} className="git-actions-trigger" aria-label="Git actions" aria-haspopup="menu" aria-expanded={open} disabled={!repository} title={repository ? 'Commit, push or create a pull request' : 'Open a Git repository to use Git actions'} onClick={() => setOpen(!open)}><GitCommitHorizontal size={14}/><span>Actions</span><ChevronDown size={13}/></button>
     {open && <div ref={menu} className="git-actions-menu" role="menu" aria-label="Git actions">
-      <button role="menuitem" disabled={!selectedCount} onClick={() => choose('commit')} title={selectedCount ? `Commit ${selectedCount} selected files` : 'Select files to commit'}><GitCommitHorizontal size={16}/><span>Commit changes</span>{selectedCount > 0 && <small>{selectedCount}</small>}</button>
+      <button role="menuitem" disabled={!changedCount} onClick={() => choose('commit')} title={!changedCount ? 'No changes to commit' : selectedCount ? `Commit ${selectedCount} selected files` : `Commit all ${changedCount} changed files`}><GitCommitHorizontal size={16}/><span>Commit changes</span>{changedCount > 0 && <small>{selectedCount || changedCount}</small>}</button>
       <button role="menuitem" disabled={!pushTarget} onClick={() => choose('push')} title={pushTarget ? `Push to ${pushTarget}` : 'Configure an upstream branch to push'}><ArrowUp size={16}/><span>Push branch</span></button>
       <button role="menuitem" onClick={() => choose('pr')}><GitPullRequest size={16}/><span>Create pull request</span></button>
     </div>}

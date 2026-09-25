@@ -66,7 +66,12 @@ export function createActivityParser(provider: ProviderId) {
           tools.set(block.id, { kind, title, parentId });
           add(`tool:${block.id}`, kind, title, block.input, 'running', { parentId, agentId: kind === 'agent' ? block.id : undefined });
         }
-        if (block.type === 'thinking') { const existing = [...blocks.entries()].find(([key, entry]) => key.startsWith(`${streamKey}:${value.message?.id}:`) && entry.kind === 'reasoning'); add(existing?.[1].id || `${streamKey}:${value.message?.id || value.uuid}:${index}`, 'reasoning', 'Thinking', block.thinking, 'completed', { parentId }); }
+        if (block.type === 'thinking') {
+          const key = `${streamKey}:${value.message?.id || value.uuid}:${index}`;
+          const existing = blocks.get(key);
+          // Some final snapshots omit the summary that was already streamed.
+          add(existing?.id || key, 'reasoning', 'Thinking', block.thinking, 'completed', { parentId, append: !block.thinking });
+        }
         if (block.type === 'text' && parentId) add(`reply:${value.uuid || value.message?.id}:${index}`, 'status', 'Agent response', block.text, 'completed', { parentId });
       }
       if (value.type === 'user') for (const block of Array.isArray(value.message?.content) ? value.message.content : []) if (block.type === 'tool_result') {

@@ -6,13 +6,10 @@ import './light.css';
 import './quiet-focus.css';
 import './sidebar.css';
 import './motion.css';
-
-const Root = process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('picker-sketch')
-  ? React.lazy(() => import('./ModelPicker.prototype.js').then(module => ({default: module.ModelPickerSketch})))
-  : App;
+import './styles/commit-dialog.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <React.Suspense fallback={null}><Root /></React.Suspense>
+    <App />
   </React.StrictMode>,
 );

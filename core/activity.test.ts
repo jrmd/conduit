@@ -104,3 +104,16 @@ test('Codex session fallback reads only current public events and explicitly lin
     assert.doesNotMatch(JSON.stringify(rows),/Old response|raw reasoning|unrelated sessions/);
   }finally{await rm(home,{recursive:true,force:true})}
 });
+
+
+test('Claude empty final thinking block retains the streamed summary', () => {
+  const parse = createActivityParser('claude');
+  const event = (value: object) => parse(JSON.stringify(value));
+  event({type:'stream_event',event:{type:'message_start',message:{id:'m'}}});
+  const start = event({type:'stream_event',event:{type:'content_block_start',index:0,content_block:{type:'thinking',thinking:''}}})[0];
+  const delta = event({type:'stream_event',event:{type:'content_block_delta',index:0,delta:{type:'thinking_delta',thinking:'Checking files'}}})[0];
+  const complete = event({type:'assistant',message:{id:'m',content:[{type:'thinking',thinking:''}]}})[0];
+  assert.equal(complete.id,start.id);
+  assert.equal(complete.status,'completed');
+  assert.equal((complete.append ? delta.detail : '') + complete.detail,'Checking files');
+});

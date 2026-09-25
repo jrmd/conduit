@@ -1,0 +1,39 @@
+/* Theme tokens. Components read only these variables, so each theme is defined once, here. */
+:root, html[data-theme=dark] {
+  color-scheme: dark;
+  --q-bg:#121418; --q-sidebar:#0d0f12; --q-paper:#191c22;
+  --q-text:#e4e7ee; --q-muted:#8d95a5; --q-faint:#737b87; --q-line:#262b35;
+  --q-hover:#1b1f27; --q-selected:#212734;
+  /* Brand accents follow the logo: cyan through blue to violet. */
+  --q-accent:#45e0d2; --q-accent-2:#9b7bff; --q-on-accent:#061318;
+  --q-accent-soft:color-mix(in srgb,var(--q-accent) 14%,transparent);
+  --q-gradient:linear-gradient(120deg,#45e0d2,#4b9dff 55%,#9b7bff);
+  --q-glow:0 0 0 3px color-mix(in srgb,var(--q-accent) 16%,transparent);
+  --q-shadow:0 18px 50px #0008,0 2px 8px #0005;
+  --q-focus:color-mix(in srgb,var(--q-accent) 70%,transparent);
+  --q-working:#4bb8ff; --q-warning:#e6b35a;
+  --q-danger:#f0595c; --q-danger-strong:#c73c3f;
+  --q-added:#8ac49e; --q-added-bg:#25443255; --q-removed:#e39a9c; --q-removed-bg:#522e3255;
+  --q-hunk:#9cbbdf; --q-hunk-bg:#263442; --q-modified:#d4ad79;
+  --q-toggle-off:#3a404b; --q-scrollbar:#343a45; --q-backdrop:#05070bbb;
+  --effort-minimal:#7eb6d6; --effort-low:#7eb6d6; --effort-medium:#78c8a6; --effort-high:#b79cef;
+  --effort-xhigh:#d69aff; --effort-max:#ffbe75; --effort-ultra:#f58dd8;
+  --font-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --motion-fast:140ms; --motion-enter:180ms; --motion-ease:cubic-bezier(.2,.8,.2,1);
+}
+html[data-theme=light] {
+  color-scheme: light;
+  --q-bg:#fbfbfd; --q-sidebar:#f3f4f8; --q-paper:#fff;
+  --q-text:#1f2430; --q-muted:#667085; --q-faint:#7b8496; --q-line:#e1e4ec;
+  --q-hover:#eaecf3; --q-selected:#e2e7f3;
+  --q-accent:#0b8479; --q-accent-2:#6d4de6; --q-on-accent:#fff;
+  --q-gradient:linear-gradient(120deg,#12a89b,#3d7bf0 55%,#7a55ea);
+  --q-shadow:0 18px 50px #1a20401a,0 2px 8px #1a20400f;
+  --q-working:#1f7fd1; --q-warning:#a86d10;
+  --q-danger:#c9302c; --q-danger-strong:#c9302c;
+  --q-added:#226546; --q-added-bg:#e1f1e8; --q-removed:#a13848; --q-removed-bg:#f8e5e7;
+  --q-hunk:#345f8d; --q-hunk-bg:#e3edf8; --q-modified:#a86d10;
+  --q-toggle-off:#c3cad6; --q-scrollbar:#c3cad6; --q-backdrop:#1f2a3a55;
+  --effort-high:#3668a0; --effort-xhigh:#3668a0; --effort-max:#7854a8; --effort-ultra:#91429a;
+  --effort-minimal:#2f7aa6; --effort-low:#2f7aa6; --effort-medium:#2b8a63;
+}

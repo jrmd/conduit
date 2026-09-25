@@ -18,7 +18,7 @@ describe('provider CLI invocation', () => {
 
   it('passes prompts and explicit resume ids as argv for the other providers', () => {
     assert.deepEqual(buildProviderInvocation('claude', '/work/project', 'a prompt with spaces', 'claude-session'), {
-      command: 'claude', args: ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--forward-subagent-text', '--permission-mode', 'plan', '--resume', 'claude-session'], stdin: 'a prompt with spaces',
+      command: 'claude', args: ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--forward-subagent-text', '--thinking-display', 'summarized', '--permission-mode', 'plan', '--resume', 'claude-session'], stdin: 'a prompt with spaces',
     });
     assert.deepEqual(buildProviderInvocation('cursor', '/work/project', 'hello', 'cursor-session'), {
       command: 'cursor-agent', args: ['--print', '--output-format', 'stream-json', '--resume', 'cursor-session', '--', 'hello'],

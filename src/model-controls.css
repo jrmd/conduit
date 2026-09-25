@@ -14,14 +14,13 @@ html[data-theme] .quiet-focus .model-control-choices small { display:block; colo
 .effort-menu .model-control-context button { width:auto; min-height:28px; padding:6px 9px; font-size:11px; background:var(--q-sidebar); }
 .effort-menu .model-control-context button[aria-pressed=true] { color:var(--model-control-accent); }
 .model-visibility { margin-top:24px; }
-.model-visibility details { margin:12px 0; }
 .model-visibility summary { cursor:pointer; padding:8px 0; }
 .model-visibility label { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:8px; font-size:13px; }
 .model-visibility-list { max-height:320px; overflow:auto; }
 .composer .effort-menu { width:240px; max-width:calc(100vw - 32px); max-height:var(--model-menu-available-height, calc(100dvh - 24px)); overflow-y:auto; overflow-x:hidden; padding:7px; border-radius:12px; }
 @media(max-width:600px) { .composer .effort-wrap { position:static; } .composer .effort-menu { left:12px; bottom:calc(100% + 8px); } }
 
-.model-visibility details { border-bottom:1px solid var(--q-line); padding-bottom:8px; }
+.model-visibility details { margin:12px 0; border-bottom:1px solid var(--q-line); padding-bottom:8px; }
 .model-visibility summary { display:flex; align-items:center; gap:8px; list-style:none; font-size:13px; font-weight:500; }
 .model-visibility summary::-webkit-details-marker { display:none; }
 .model-visibility summary svg { color:var(--q-muted); transition:transform .15s; }

@@ -69,7 +69,7 @@ export function buildProviderInvocation(provider: ProviderId, cwd: string, promp
         ? { command: 'codex', args: ['exec', 'resume', '--json', '--skip-git-repo-check', ...modelArgs, ...effortArgs, '-c', `sandbox_mode="${mode === 'edit' ? 'workspace-write' : 'read-only'}"`, '-c', 'approval_policy="never"', sessionId, '-'], stdin: prompt }
         : { command: 'codex', args: ['exec', '--json', '--skip-git-repo-check', ...modelArgs, ...effortArgs, '-c', `sandbox_mode="${mode === 'edit' ? 'workspace-write' : 'read-only'}"`, '-c', 'approval_policy="never"'], stdin: prompt };
     case 'claude':
-      return { command: 'claude', args: ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--forward-subagent-text', ...modelArgs, ...effortArgs, '--permission-mode', mode === 'edit' ? 'acceptEdits' : 'plan', ...(sessionId ? ['--resume', sessionId] : [])], stdin: prompt };
+      return { command: 'claude', args: ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--forward-subagent-text', '--thinking-display', 'summarized', ...modelArgs, ...effortArgs, '--permission-mode', mode === 'edit' ? 'acceptEdits' : 'plan', ...(sessionId ? ['--resume', sessionId] : [])], stdin: prompt };
     case 'cursor':
       return { command: 'cursor-agent', args: ['--print', '--output-format', 'stream-json', ...modelArgs, ...effortArgs, ...(sessionId ? ['--resume', sessionId] : []), '--', prompt] };
     case 'opencode':

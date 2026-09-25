@@ -1,95 +1,99 @@
 /* Session-first navigation, with project management one click away. */
-html[data-theme] .quiet-focus .sidebar { width:264px; min-width:264px; background:var(--q-sidebar); }
-html[data-theme=dark] .quiet-focus .sidebar { background:#111211; }
-html[data-theme] .quiet-focus .sidebar-top { height:56px; min-height:56px; padding:0 22px; }
-html[data-theme] .quiet-focus .brand { font-size:17px; gap:9px; }
-html[data-theme] .quiet-focus .sidebar-tools { display:flex; align-items:center; gap:2px; padding:0 13px 12px; }
-html[data-theme] .quiet-focus .sidebar-tools .icon-button { width:29px; height:29px; flex:none; border-radius:6px; }
-html[data-theme] .quiet-focus .sidebar-tools .thread-search { display:flex; align-items:center; flex:1; min-width:0; gap:8px; margin:0; padding:6px; background:transparent; }
-html[data-theme] .quiet-focus .sidebar-tools input { min-width:0; width:100%; font-size:13px; }
-html[data-theme] .quiet-focus .sidebar-projects { margin:0 14px 10px; padding:5px; border:1px solid var(--q-line); border-radius:8px; max-height:30vh; overflow:auto; }
+html[data-theme] .quiet-focus .sidebar { width:264px; min-width:264px; background:var(--q-sidebar); border-right:1px solid var(--q-line); }
+html[data-theme] .quiet-focus .sidebar-top { height:56px; min-height:56px; padding:0 18px 0 20px; }
+html[data-theme] .quiet-focus .brand { font-size:18px; gap:9px; letter-spacing:-.6px; }
+html[data-theme] .quiet-focus .brand>span { background:var(--q-gradient); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:650; }
+html[data-theme] .quiet-focus .vulp-brand-logo { width:26px; height:26px; border-radius:0; }
+html[data-theme] .quiet-focus .sidebar-collapse { margin-left:auto; }
+html[data-theme] .quiet-focus .sidebar-reopen { flex-shrink:0; }
+
+html[data-theme] .quiet-focus .sidebar-tools { display:flex; align-items:center; gap:2px; padding:0 12px 12px; }
+html[data-theme] .quiet-focus .sidebar-tools .icon-button { width:29px; height:29px; flex:none; border-radius:7px; }
+html[data-theme] .quiet-focus .sidebar-tools .thread-search { display:flex; align-items:center; flex:1; min-width:0; gap:8px; margin:0 4px 0 0; padding:6px 9px; border:1px solid var(--q-line); border-radius:8px; background:var(--q-bg); }
+html[data-theme] .quiet-focus .sidebar-tools .thread-search:focus-within { border-color:color-mix(in srgb,var(--q-accent) 55%,var(--q-line)); box-shadow:var(--q-glow); }
+html[data-theme] .quiet-focus .sidebar-tools input { min-width:0; width:100%; font-size:12px; }
+html[data-theme] .quiet-focus .sidebar-projects { margin:0 12px 10px; padding:5px; border:1px solid var(--q-line); border-radius:9px; background:var(--q-bg); max-height:30vh; overflow:auto; }
 html[data-theme] .quiet-focus .sidebar-projects .project-row-action { opacity:1; }
-html[data-theme] .quiet-focus .sidebar-content.session-list { padding:0 12px 14px; overflow-y:auto; }
-html[data-theme] .quiet-focus .session-list-heading { padding:8px 10px 12px; font-size:11px; color:var(--q-muted); }
-html[data-theme] .quiet-focus .session-card { margin:0 0 5px; }
+html[data-theme] .quiet-focus .sidebar-content.session-list { padding:0 10px 14px; overflow-y:auto; }
+
+/* Thread cards: title and live status, then project, branch and agent. */
+html[data-theme] .quiet-focus .session-card { margin:0 0 2px; }
 html[data-theme] .quiet-focus .session-card .thread-item,
-html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .thread-item { display:flex; flex-direction:column; align-items:stretch; gap:7px; min-height:88px; padding:11px 12px; border-radius:9px; line-height:18px; background:transparent; }
+html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .thread-item { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:0; padding:9px 12px 9px 14px; border-radius:9px; line-height:18px; background:transparent; }
 html[data-theme] .quiet-focus .session-card .thread-item:hover { background:var(--q-hover); }
 html[data-theme] .quiet-focus .session-card .thread-item.active { background:var(--q-selected); }
-html[data-theme=dark] .quiet-focus .session-card .thread-item.active { background:linear-gradient(110deg,#292b29,#222422); }
-html[data-theme] .quiet-focus .session-meta { padding-right:89px; display:flex; align-items:center; gap:7px; min-width:0; font-size:11px; color:var(--q-muted); }
-html[data-theme] .quiet-focus .session-project-badge { display:grid; place-items:center; flex:none; width:18px; height:18px; border-radius:4px; font-size:9px; line-height:1; font-weight:650; }
-html[data-theme] .quiet-focus .session-project-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-html[data-theme] .quiet-focus .session-status { display:flex; align-items:center; gap:4px; margin-left:auto; flex:none; font-size:10px; position:absolute; right:12px; top:14px; }
-html[data-theme] .quiet-focus .session-status.working { color:#139bc0; }
+html[data-theme] .quiet-focus .session-title-row { display:flex; align-items:center; gap:8px; min-width:0; }
+html[data-theme] .quiet-focus .session-card .thread-item-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:450; letter-spacing:-.1px; color:var(--q-text); }
+html[data-theme] .quiet-focus .session-card .thread-item.active .thread-item-title { font-weight:550; }
+html[data-theme] .quiet-focus .session-status { display:flex; align-items:center; gap:5px; flex:none; font-size:10px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .session-status.working { color:var(--q-working); }
+html[data-theme] .quiet-focus .session-status.needs-approval { color:var(--q-warning); }
 html[data-theme] .quiet-focus .session-status svg { color:inherit; }
-html[data-theme] .quiet-focus .session-status.needs-approval { color:#bf8d37; }
-html[data-theme] .quiet-focus .session-card .thread-item time { display:block; opacity:1; margin:0; color:inherit; font-size:10px; }
-html[data-theme] .quiet-focus .session-card .thread-item-title { flex:none; font-size:14px; font-weight:400; letter-spacing:-.15px; color:var(--q-text); }
-html[data-theme] .quiet-focus .session-details { display:flex; align-items:center; gap:8px; color:var(--q-muted); font-size:11px; }
-html[data-theme] .quiet-focus .session-branch { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+html[data-theme] .quiet-focus .working-dot { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 0 0 currentColor; animation:working-pulse 1.6s ease-out infinite; }
+@keyframes working-pulse { 0% { box-shadow:0 0 0 0 color-mix(in srgb,currentColor 60%,transparent); } 70%,100% { box-shadow:0 0 0 6px transparent; } }
+html[data-theme] .quiet-focus .session-card .thread-item time { display:block; opacity:1; margin:0; color:inherit; font-size:10px; font-variant-numeric:tabular-nums; }
+html[data-theme] .quiet-focus .session-meta { display:flex; align-items:center; gap:6px; min-width:0; font-size:11px; color:var(--q-muted); }
+html[data-theme] .quiet-focus .session-project-dot { flex:none; width:7px; height:7px; border-radius:50%; }
+html[data-theme] .quiet-focus .session-project-name { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+html[data-theme] .quiet-focus .session-branch { display:flex; align-items:center; gap:4px; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+html[data-theme] .quiet-focus .session-branch:before { content:'·'; margin-right:2px; opacity:.6; }
 html[data-theme] .quiet-focus .session-branch svg { flex:none; opacity:.65; }
-html[data-theme] .quiet-focus .session-provider { display:flex; margin-left:auto; flex:none; opacity:.65; }
-html[data-theme] .quiet-focus .settled-toggle { display:flex; align-items:center; gap:12px; margin:0 18px 8px; padding:10px 4px; border:0; background:transparent; color:var(--q-muted); font-size:11px; text-align:left; }
+html[data-theme] .quiet-focus .session-pinned { flex:none; color:var(--q-muted); }
+html[data-theme] .quiet-focus .session-provider { display:flex; margin-left:auto; flex:none; opacity:.5; }
+html[data-theme] .quiet-focus .thread-item.active .session-provider { opacity:.8; }
+
+/* Hover actions sit over the status; live cards keep status and use the meta row. */
+html[data-theme] .quiet-focus .session-actions { position:absolute; right:8px; top:6px; display:flex; align-items:center; gap:2px; opacity:0; pointer-events:none; background:var(--q-hover); border-radius:6px; box-shadow:-10px 0 10px -4px var(--q-hover); }
+html[data-theme] .quiet-focus .thread-item.active~.session-actions { background:var(--q-selected); box-shadow:-10px 0 10px -4px var(--q-selected); }
+html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .session-actions { opacity:1; pointer-events:auto; }
+html[data-theme] .quiet-focus .session-actions button { display:flex; align-items:center; justify-content:center; gap:4px; height:23px; padding:0 6px; border:0; border-radius:5px; background:transparent; color:var(--q-muted); font-size:11px; }
+html[data-theme] .quiet-focus .session-actions button:hover { color:var(--q-text); background:var(--q-hover); }
+html[data-theme] .quiet-focus .session-actions button:disabled { opacity:.4; cursor:default; }
+html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .session-status:not(.working):not(.needs-approval) { opacity:0; }
+html[data-theme] .quiet-focus .session-card.has-status:not(.settled-card) .session-actions { top:auto; bottom:6px; }
+html[data-theme] .quiet-focus .session-card.has-status:is(:hover,:focus-within) .session-provider { opacity:0; }
+
+html[data-theme] .quiet-focus .settled-toggle { display:flex; flex-shrink:0; align-items:center; gap:12px; margin:0 16px 6px; padding:10px 4px; border:0; background:transparent; color:var(--q-muted); font-size:11px; text-align:left; }
 html[data-theme] .quiet-focus .settled-toggle:hover { color:var(--q-text); }
 .settled-rule { height:1px; background:var(--q-line); flex:1; }
 .settled-expanded { transform:rotate(180deg); }
-html[data-theme] .quiet-focus .sidebar-footer { border:0; height:44px; min-height:44px; margin:0 18px; padding:0; }
-html[data-theme] .quiet-focus .sidebar :is(button,input):focus-visible { outline:2px solid var(--q-muted); outline-offset:2px; }
+html[data-theme] .quiet-focus .settled-list { flex:0 1 auto; min-height:0; max-height:40%; overflow-y:auto; padding:0 10px 8px; }
+html[data-theme] .quiet-focus .settled-card .thread-item,
+html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .thread-item { min-height:32px; padding:7px 10px 7px 14px; border-radius:7px; }
+html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .thread-item { padding-right:108px; }
+html[data-theme] .quiet-focus .settled-card .thread-item-title { font-size:12px; font-weight:400; color:var(--q-muted); }
+html[data-theme] .quiet-focus .settled-card .thread-item.active .thread-item-title { color:var(--q-text); }
+html[data-theme] .quiet-focus .settled-card .settled-age { flex:none; color:var(--q-muted); }
+html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .settled-age { opacity:0; }
+html[data-theme] .quiet-focus .settled-card .session-actions { top:50%; transform:translateY(-50%); }
+
+html[data-theme] .quiet-focus .sidebar-footer { border:0; height:46px; min-height:46px; margin:0 14px; padding:0; }
+html[data-theme] .quiet-focus .sidebar :is(button,input):focus-visible { outline:2px solid color-mix(in srgb,var(--q-accent) 70%,transparent); outline-offset:1px; }
 html[data-theme] .quiet-focus .sidebar .icon-button:disabled { opacity:.35; cursor:default; }
 html[data-theme] .quiet-focus.platform-darwin .sidebar-top { padding-left:94px; }
-@media(max-width:650px) {
-  html[data-theme] .quiet-focus .sidebar { width:min(290px,88vw); min-width:0; z-index:50; }
-}
-@media(prefers-reduced-motion:reduce) {
-  .session-status .spin { animation:none; }
-}
 
-html[data-theme] .quiet-focus .sidebar-collapse { margin-left:auto; }
-html[data-theme] .quiet-focus .settled-list { flex:0 1 auto; min-height:0; max-height:40%; overflow-y:auto; padding:0 12px 8px; }
-html[data-theme] .quiet-focus .settled-toggle { flex-shrink:0; }
-html[data-theme] .quiet-focus .sidebar-reopen { flex-shrink:0; }
+.thread-preview { position:fixed; z-index:100; box-sizing:border-box; width:260px; padding:13px; display:flex; flex-direction:column; gap:10px; border:1px solid var(--q-line); border-radius:10px; color:var(--q-muted); background:var(--q-paper); box-shadow:var(--q-shadow); font-size:12px; max-height:204px; overflow:auto; }
+.thread-preview strong { color:var(--q-text); font-size:13px; line-height:18px; font-weight:500; overflow-wrap:anywhere; max-height:54px; overflow:hidden; }
+.thread-preview > span { display:flex; align-items:center; gap:9px; overflow-wrap:anywhere; min-width:0; }
+.thread-preview svg { flex:none; }
+
 @media(min-width:651px) {
   html[data-theme] .quiet-focus.sidebar-collapsed .sidebar { display:none; }
   html[data-theme] .quiet-focus.sidebar-collapsed.platform-darwin .topbar { padding-left:94px; }
 }
 @media(max-width:650px) {
+  html[data-theme] .quiet-focus .sidebar { width:min(290px,88vw); min-width:0; z-index:50; }
   html[data-theme] .quiet-focus :is(.sidebar-collapse,.sidebar-reopen) { display:none; }
 }
-
-html[data-theme] .quiet-focus .settled-card { margin-bottom:2px; }
-html[data-theme] .quiet-focus .settled-card .thread-item,
-html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .thread-item {
-  flex-direction:row; align-items:center; min-height:32px; padding:7px 10px; gap:12px; border-radius:5px;
-}
-html[data-theme] .quiet-focus .settled-card .thread-item-title { flex:1; font-size:12px; color:var(--q-muted); }
-html[data-theme] .quiet-focus .settled-card .settled-age { position:absolute; right:12px; flex:none; color:var(--q-muted); }
-html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .settled-age { opacity:0; }
-html[data-theme] .quiet-focus .settled-card .thread-item.active .thread-item-title { color:var(--q-text); }
-html[data-theme] .quiet-focus .session-actions { position:absolute; right:9px; top:9px; display:flex; align-items:center; gap:2px; opacity:0; pointer-events:none; background:var(--q-sidebar); border-radius:5px; }
-html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .session-actions { opacity:1; pointer-events:auto; }
-html[data-theme] .quiet-focus .session-actions button { display:flex; align-items:center; justify-content:center; gap:4px; height:23px; padding:0 5px; border:0; border-radius:5px; background:transparent; color:var(--q-muted); font-size:11px; }
-html[data-theme] .quiet-focus .session-actions button:hover { color:var(--q-text); background:var(--q-hover); }
-html[data-theme] .quiet-focus .session-actions button:disabled { opacity:.4; cursor:default; }
-html[data-theme] .quiet-focus .session-card:is(:hover,:focus-within) .session-status:not(.working):not(.needs-approval) { opacity:0; }
-/* Keep live status in the header; hover actions use the footer instead. */
-html[data-theme] .quiet-focus .session-card.has-status:not(.settled-card) .session-actions { top:auto; bottom:8px; }
-html[data-theme] .quiet-focus .session-card.has-status .session-branch { max-width:calc(100% - 90px); }
-html[data-theme] .quiet-focus .session-card.has-status:is(:hover,:focus-within) .session-provider { opacity:0; }
-html[data-theme] .quiet-focus .session-pinned { flex:none; color:var(--q-muted); }
-html[data-theme] .quiet-focus .settled-card .session-actions { top:50%; transform:translateY(-50%); }
-html[data-theme] .quiet-focus .settled-card .thread-item,
-html[data-theme] .quiet-focus .settled-card:is(:hover,:focus-within) .thread-item { padding-right:108px; }
-.thread-preview { position:fixed; z-index:100; box-sizing:border-box; width:260px; padding:13px; display:flex; flex-direction:column; gap:10px; border:1px solid var(--q-line); border-radius:9px; color:var(--q-muted); background:var(--q-sidebar); box-shadow:0 8px 24px #0003; font-size:12px; max-height:204px; overflow:auto; }
-.thread-preview strong { color:var(--q-text); font-size:13px; line-height:18px; font-weight:500; overflow-wrap:anywhere; max-height:54px; overflow:hidden; }
-.thread-preview > span { display:flex; align-items:center; gap:9px; overflow-wrap:anywhere; min-width:0; }
-.thread-preview svg { flex:none; }
 @media (hover:none) {
   html[data-theme] .quiet-focus .session-actions { opacity:1; pointer-events:auto; }
-  html[data-theme] .quiet-focus .session-meta { padding-right:89px; }
+  html[data-theme] .quiet-focus .session-title-row { padding-right:84px; }
   html[data-theme] .quiet-focus .session-status:not(.working):not(.needs-approval) { display:none; }
   html[data-theme] .quiet-focus .session-card.has-status .session-provider { opacity:0; }
   html[data-theme] .quiet-focus .settled-card .thread-item { padding-right:108px; }
   html[data-theme] .quiet-focus .settled-age { visibility:hidden; }
   .thread-preview { display:none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .session-status .spin, .working-dot { animation:none; }
 }

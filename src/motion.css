@@ -10,7 +10,7 @@
 .quiet-focus .settled-toggle > svg { transition:transform var(--motion-enter) var(--motion-ease); }
 .thread-preview { animation:preview-enter var(--motion-enter) var(--motion-ease) both; }
 .thread-preview[data-closing=true] { animation:preview-exit 120ms ease both; pointer-events:none; }
-.quiet-focus :is(.workspace-context-menu,.project-picker-menu,.model-menu,.provider-menu,.effort-menu,.approval-menu,.git-actions-menu,.workspace-menu) {
+.quiet-focus :is(.workspace-context-menu,.project-picker-menu,.model-menu,.effort-menu,.git-actions-menu,.workspace-menu) {
   animation:surface-enter var(--motion-enter) var(--motion-ease) both;
 }
 .quiet-focus :is(.sidebar-projects,.settled-list,.settings-content,.changes-panel,.dialog,.toast) {

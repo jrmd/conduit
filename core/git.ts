@@ -102,6 +102,34 @@ export async function gitCommit(cwd: string, files: string[], message: string) {
   }
 }
 
+/** Diff text for a commit-message prompt: stat first, then patches until the budget runs out. */
+export async function commitContext(cwd: string, files: string[], budget = 24_000) {
+  cwd = await root(cwd);
+  const status = await requireChanged(cwd, files);
+  const chosen = status.files.filter(file => files.includes(file.path));
+  const headExists = await git(cwd, 'rev-parse', '--verify', 'HEAD').then(() => true, () => false);
+  // gitCommit uses working-tree content, even when a first commit already has staged files.
+  const tracked = chosen.filter(file => headExists && !file.untracked).flatMap(file => file.previousPath ? [file.path, file.previousPath] : [file.path]);
+  const base = ['HEAD'];
+  const [stat, patch, log] = await Promise.all([
+    tracked.length ? git(cwd, 'diff', ...base, '--stat', '--', ...tracked) : '',
+    tracked.length ? git(cwd, 'diff', ...base, '--', ...tracked) : '',
+    headExists ? git(cwd, 'log', '-8', '--format=%s').catch(() => '') : '',
+  ]);
+  const untracked: string[] = [];
+  for (const file of chosen.filter(file => file.untracked || !headExists)) {
+    const absolute = path.resolve(cwd, file.path);
+    const stat = await fs.lstat(absolute).catch(() => null);
+    const bytes = stat?.isFile() && stat.size <= 200_000 ? await fs.readFile(absolute) : null;
+    const body = bytes && !bytes.includes(0) ? bytes.toString('utf8').split('\n').slice(0, 120).map(line => `+${line}`).join('\n') : '(binary, removed or large file)';
+    untracked.push(`New file: ${file.path}\n${body}`);
+  }
+  const summary = chosen.map(file => `${file.untracked ? 'A' : file.status} ${file.previousPath ? `${file.previousPath} -> ` : ''}${file.path}`).join('\n');
+  let diff = [patch, ...untracked].filter(Boolean).join('\n\n');
+  if (diff.length > budget) diff = diff.slice(0, budget) + '\n… (diff truncated)';
+  return { files: summary, stat, diff, recent: log };
+}
+
 export async function gitPush(cwd: string) {
   cwd = await root(cwd);
   const status = await gitStatus(cwd);

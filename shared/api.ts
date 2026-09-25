@@ -22,6 +22,7 @@ export interface Snapshot { approvals?: ApprovalRequest[]; projects: Project[]; 
 export interface ChangedFile { path: string; previousPath?: string; status: string; staged: boolean; unstaged: boolean; untracked: boolean; }
 export interface GitStatus { branch: string; files: ChangedFile[]; ahead: number; behind: number; remote?: string; pushTarget?: string; isRepository: boolean; }
 export type AppEvent = { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
+export interface CommitMessageInput { threadId?: string; projectId: string; files: string[]; provider: ProviderId; model?: string; }
 export interface CommitInput { threadId?: string; projectId: string; files: string[]; message: string; }
 export interface PRInput { threadId?: string; projectId: string; title: string; body: string; base?: string; draft: boolean; }
 export interface ComposerItem { id: string; kind: 'file' | 'skill' | 'plugin'; name: string; description: string; token: string; path?: string; }
@@ -58,6 +59,7 @@ export interface DesktopApi {
   getGit(projectId: string, threadId?: string): Promise<GitStatus>;
   getDiff(projectId: string, file: string, threadId?: string): Promise<string>;
   commit(input: CommitInput): Promise<string>;
+  generateCommitMessage(input: CommitMessageInput): Promise<string>;
   push(projectId: string, threadId?: string): Promise<string>;
   createPR(input: PRInput): Promise<string>;
   openExternal(url: string): Promise<void>;

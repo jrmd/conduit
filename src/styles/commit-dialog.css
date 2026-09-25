@@ -1,0 +1,28 @@
+.commit-dialog { width:min(100%,520px); max-height:calc(100dvh - 40px); overflow-y:auto; }
+.commit-files { border:1px solid var(--q-line); border-radius:8px; overflow:hidden; margin-bottom:18px; }
+.commit-file-list { max-height:200px; overflow-y:auto; }
+.commit-file { display:flex; align-items:center; gap:9px; padding:9px 11px; position:relative; cursor:pointer; color:var(--q-text); font-size:12px; }
+.commit-file:hover { background:var(--q-hover); }
+.commit-file-all { border-bottom:1px solid var(--q-line); background:var(--q-bg); }
+.commit-file input { position:absolute; opacity:0; width:16px; height:16px; margin:0; }
+.commit-check { width:15px; height:15px; flex:none; display:grid; place-items:center; border:1px solid var(--q-muted); border-radius:4px; }
+.commit-check svg { visibility:hidden; }
+.commit-file input:checked + .commit-check { background:var(--q-accent); border-color:var(--q-accent); color:var(--q-on-accent); }
+.commit-file input:checked + .commit-check svg { visibility:visible; }
+.commit-file input:indeterminate + .commit-check { background:var(--q-accent-soft); border-color:var(--q-accent); }
+.commit-file input:focus-visible + .commit-check { outline:2px solid var(--q-accent); outline-offset:3px; }
+.commit-file-name { flex:1; min-width:0; overflow-wrap:anywhere; }
+.commit-file small,.commit-hint { color:var(--q-muted); font-size:11px; }
+.commit-file-name small { display:block; margin-top:3px; }
+.commit-message-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.commit-message-head .field-label { margin:0; }
+.generate-button { display:flex; align-items:center; gap:6px; border:1px solid var(--q-line); border-radius:6px; background:var(--q-hover); color:var(--q-text); padding:6px 9px; font-size:11px; }
+.generate-button:hover:not(:disabled) { border-color:var(--q-accent); }
+html[data-theme] .quiet-focus .commit-dialog textarea { color:var(--q-text); background:var(--q-bg); border:1px solid var(--q-line); line-height:1.6; max-height:220px; }
+html[data-theme] .quiet-focus .commit-dialog textarea:focus { border-color:var(--q-accent); }
+html[data-theme] .quiet-focus .commit-dialog :is(h2,p strong) { color:var(--q-text); }
+html[data-theme] .quiet-focus .commit-dialog p { color:var(--q-muted); }
+.commit-hint { display:block; margin-top:7px; }
+.commit-bar { padding:12px 16px; border-top:1px solid var(--q-line); }
+.commit-bar .primary-button { width:100%; justify-content:center; }
+.activity-placeholder { color:var(--q-muted); font-size:11px; line-height:1.6; margin:8px 0 12px; }
