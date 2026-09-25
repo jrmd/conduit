@@ -55,7 +55,7 @@ test('provider preferences survive restart without removing existing threads', a
 
 
 test('permissions can change on a resumed thread while provider stays locked', async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), 'vulp-mode-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'conduit-mode-'));
   try {
     const store = new Store(path.join(dir, 'state.json')); await store.load();
     const project = await store.addProject(dir);
@@ -72,7 +72,7 @@ test('permissions can change on a resumed thread while provider stays locked', a
 });
 
 test('pinning survives restart and preserves activity order', async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), 'vulp-pins-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'conduit-pins-'));
   try {
     const file = path.join(dir, 'state.json');
     const store = new Store(file); await store.load();

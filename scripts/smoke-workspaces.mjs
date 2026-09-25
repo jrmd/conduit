@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 delete process.env.ELECTRON_RUN_AS_NODE;
-const root = process.cwd(), temp = await mkdtemp(path.join(tmpdir(), 'vulp-workspace-ui-'));
+const root = process.cwd(), temp = await mkdtemp(path.join(tmpdir(), 'conduit-workspace-ui-'));
 const git = (cwd, ...args) => execFileSync('git', args, {cwd, encoding:'utf8'}).trim();
 let app;
 try {

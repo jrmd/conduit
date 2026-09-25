@@ -71,10 +71,10 @@ export default function App() {
   const [threadSearch, setThreadSearch] = useState('');
   const [showSettled, setShowSettled] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('vulp.sidebar-collapsed') === 'true'; } catch { return false; }
+    try { return localStorage.getItem('conduit.sidebar-collapsed') === 'true'; } catch { return false; }
   });
   useEffect(() => {
-    try { localStorage.setItem('vulp.sidebar-collapsed', String(sidebarCollapsed)); } catch { /* Keep the preference for this session. */ }
+    try { localStorage.setItem('conduit.sidebar-collapsed', String(sidebarCollapsed)); } catch { /* Keep the preference for this session. */ }
   }, [sidebarCollapsed]);
   const [summaryChoice, setSummaryChoice] = useState<SummaryChoice | null>(readSummaryChoice);
   const [summaryBusy, setSummaryBusy] = useState<string | null>(null);
@@ -95,11 +95,11 @@ export default function App() {
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>('codex');
   const [selectedEffort, setSelectedEffort] = useState('');
   const [selectedModelSettings, setSelectedModelSettings] = useState<ModelSettings>({});
-  const [hiddenModels, setHiddenModels] = useState<string[]>(() => { try { const saved = JSON.parse(localStorage.getItem('vulp.hidden-models') || '[]'); return Array.isArray(saved) ? saved.filter((item): item is string => typeof item === 'string') : []; } catch { return []; } });
+  const [hiddenModels, setHiddenModels] = useState<string[]>(() => { try { const saved = JSON.parse(localStorage.getItem('conduit.hidden-models') || '[]'); return Array.isArray(saved) ? saved.filter((item): item is string => typeof item === 'string') : []; } catch { return []; } });
   function toggleModelVisibility(key: string) {
     const next = hiddenModels.includes(key) ? hiddenModels.filter(item => item !== key) : [...hiddenModels, key];
     setHiddenModels(next);
-    try { localStorage.setItem('vulp.hidden-models', JSON.stringify(next)); } catch { notify('Could not save model visibility; it will last for this session.', 'error'); }
+    try { localStorage.setItem('conduit.hidden-models', JSON.stringify(next)); } catch { notify('Could not save model visibility; it will last for this session.', 'error'); }
   }
   const [effortOpen, setEffortOpen] = useState(false);
   const [planning, setPlanning] = useState(false);
@@ -114,14 +114,14 @@ export default function App() {
   const [modelFilter, setModelFilter] = useState<ProviderId | 'favourites'>('codex');
   const [modelQuery, setModelQuery] = useState('');
   const [favouriteModels, setFavouriteModels] = useState<string[]>(() => {
-    try { const saved: unknown = JSON.parse(localStorage.getItem('vulp.favourite-models') || '[]'); return Array.isArray(saved) ? saved.filter((value): value is string => typeof value === 'string') : []; } catch { return []; }
+    try { const saved: unknown = JSON.parse(localStorage.getItem('conduit.favourite-models') || '[]'); return Array.isArray(saved) ? saved.filter((value): value is string => typeof value === 'string') : []; } catch { return []; }
   });
   const isFavouriteModel = (provider: ProviderId, model: string) => favouriteModels.includes(`${provider}:${model}`);
   function toggleFavouriteModel(provider: ProviderId, model: string) {
     const key = `${provider}:${model}`;
     const next = favouriteModels.includes(key) ? favouriteModels.filter(item => item !== key) : [...favouriteModels, key];
     setFavouriteModels(next);
-    try { localStorage.setItem('vulp.favourite-models', JSON.stringify(next)); } catch { notify('Could not save favourites; they will last for this session.', 'error'); }
+    try { localStorage.setItem('conduit.favourite-models', JSON.stringify(next)); } catch { notify('Could not save favourites; they will last for this session.', 'error'); }
   }
 
   const [modelBusy, setModelBusy] = useState(false);
@@ -617,7 +617,7 @@ export default function App() {
 
     <main className="main-area">
       {settingsOpen ? <>
-        <SettingsScreen leading={reopenSidebar} version={appInfo.version} tab={settingsTab} onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} appearance={appearance} onAppearance={setAppearance} updateStatus={updateStatus} onUpdateStatus={setUpdateStatus} snapshot={snapshot} onSnapshot={setSnapshot} summaryChoice={summaryChoice} onSummaryChoice={choice => { setSummaryChoice(choice); localStorage.setItem('vulp.summary-model', JSON.stringify(choice)); }} modelCatalogues={modelCatalogues} hiddenModels={hiddenModels} onToggleModel={toggleModelVisibility} notify={notify}/>
+        <SettingsScreen leading={reopenSidebar} version={appInfo.version} tab={settingsTab} onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} appearance={appearance} onAppearance={setAppearance} updateStatus={updateStatus} onUpdateStatus={setUpdateStatus} snapshot={snapshot} onSnapshot={setSnapshot} summaryChoice={summaryChoice} onSummaryChoice={choice => { setSummaryChoice(choice); localStorage.setItem('conduit.summary-model', JSON.stringify(choice)); }} modelCatalogues={modelCatalogues} hiddenModels={hiddenModels} onToggleModel={toggleModelVisibility} notify={notify}/>
       </> : <>
 
       <header className="topbar">

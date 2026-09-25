@@ -3,7 +3,7 @@ import {expect} from "playwright/test";
 import {mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-const root=process.cwd();const temp=await mkdtemp(path.join(tmpdir(),"vulp-approval-ui-"));let app;
+const root=process.cwd();const temp=await mkdtemp(path.join(tmpdir(),"conduit-approval-ui-"));let app;
 try {
  const data=path.join(temp,"data"),bin=path.join(temp,"bin");await mkdir(data);await mkdir(bin);
  await copyFile("scripts/fixtures/approval-provider.mjs",path.join(bin,"codex"));await chmod(path.join(bin,"codex"),0o755);

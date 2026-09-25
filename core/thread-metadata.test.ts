@@ -8,7 +8,7 @@ import { Store } from './store';
 import { threadGitContext } from './git';
 
 it('captures branch/repository independently of later checkout and persists summary/settlement', async () => {
- const dir=await mkdtemp(path.join(tmpdir(),'vulp-thread-meta-'));
+ const dir=await mkdtemp(path.join(tmpdir(),'conduit-thread-meta-'));
  try {
   execFileSync('git',['init','-b','feature/original'],{cwd:dir});
   execFileSync('git',['remote','add','origin','git@github.com:jrmd/conduit.git'],{cwd:dir});

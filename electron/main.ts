@@ -1,5 +1,5 @@
 import { Questions } from '../core/questions';
-import { handoffBrief, planningInstructions, planTool, stepsFromMarkdown } from '../core/planning';
+import { handoffBrief, planningInstructions, planTool, planFromResponse, mergePlan } from '../core/planning';
 import { prepareWorkspace, workspaceInfo } from '../core/workspaces';
 import { Approvals } from '../core/approvals';
 import { runWithDelegation } from '../core/delegation';
@@ -107,11 +107,8 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
   let receivedBrief = false;
   const savePlan = async (update: Partial<import('../shared/api').Plan>) => {
     if (controller.signal.aborted) return;
-    if(typeof update.brief === 'string' && update.brief.trim()) {
-      receivedBrief = true;
-      if(!update.steps && !thread.plan?.steps.length) update.steps = stepsFromMarkdown(update.brief);
-    }
-    await store.updateThread(threadId, {plan:{steps:thread.plan?.steps || [],brief:thread.plan?.brief || '',...update}});
+    await store.updateThread(threadId, {plan:mergePlan(thread.plan, update)});
+    if(typeof update.brief === 'string' && update.brief.trim()) receivedBrief = true;
     emitSnapshot();
   };
   let planWrite = Promise.resolve();
@@ -132,7 +129,8 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
       if (result.sessionId) persistSession(result.sessionId);
       await sessionWrite;
       await planWrite;
-      if(thread.planning && !receivedBrief && text.trim()) await savePlan({brief:text,steps:stepsFromMarkdown(text).length ? stepsFromMarkdown(text) : thread.plan?.steps || []});
+      const responsePlan = thread.planning && !receivedBrief ? planFromResponse(text) : undefined;
+      if(responsePlan) await savePlan(responsePlan);
       if (text.trim()) await store.appendMessage(threadId, 'assistant', text);
       else if (receivedBrief && thread.plan?.brief) await store.appendMessage(threadId, 'assistant', thread.plan.brief);
       else await store.appendMessage(threadId, 'system', 'The CLI completed without a text response.');
@@ -207,7 +205,7 @@ async function runUtilityPrompt(provider: ProviderId, model: string | undefined,
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const task = (async () => {
     try {
-      directory = await fs.mkdtemp(path.join(os.tmpdir(), 'vulp-helper-'));
+      directory = await fs.mkdtemp(path.join(os.tmpdir(), 'conduit-helper-'));
       let text = '';
       await runProvider({ provider, cwd: directory, prompt, mode: 'read', model: normalizeModelId(model), signal: controller.signal, onEvent: event => { if (event.kind === 'text') text += event.text; } });
       return text;

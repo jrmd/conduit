@@ -11,7 +11,7 @@ import type { ActivityUpdate } from '../shared/api';
 
 const childOnly=process.argv.includes('--codex-child');
 for (const provider of (childOnly ? ['codex'] : process.argv.includes('--claude-parent') ? ['claude'] : ['codex', 'claude']) as ('codex'|'claude')[]) {
-  const cwd = await mkdtemp(join(tmpdir(), 'vulp-delegation-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'conduit-delegation-'));
   const token = randomUUID();
   await writeFile(join(cwd, 'marker.txt'), token);
   const controller = new AbortController();
@@ -27,7 +27,7 @@ for (const provider of (childOnly ? ['codex'] : process.argv.includes('--claude-
       continue;
     }
     const result = await runWithDelegation({provider,cwd,mode:'supervised',signal:controller.signal,onApproval:async()=>false,
-      prompt:`Use the Conduit delegation tools to spawn exactly one ${childProvider} child. Its task is: Read marker.txt in the working directory and return its exact contents. Do not read the file yourself or use native subagents. Use vulp_wait_agent repeatedly until completed. Reply with the exact marker returned by the child. If delegation fails, report the error.`,
+      prompt:`Use the Conduit delegation tools to spawn exactly one ${childProvider} child. Its task is: Read marker.txt in the working directory and return its exact contents. Do not read the file yourself or use native subagents. Use conduit_wait_agent repeatedly until completed. Reply with the exact marker returned by the child. If delegation fails, report the error.`,
       onEvent:event=>{
         if(event.kind==='text') text+=event.text;
         if(event.kind==='activity' && event.activity?.kind==='agent' && event.activity.provider) {

@@ -7,7 +7,7 @@ const send = value => process.stdout.write(JSON.stringify({jsonrpc:'2.0',...valu
 let promptId;
 createInterface({input:process.stdin}).on('line',line=>{
   const m=JSON.parse(line);
-  if(process.env.VULP_PROTOCOL_LOG) appendFileSync(process.env.VULP_PROTOCOL_LOG,JSON.stringify(m)+'\n');
+  if(process.env.CONDUIT_PROTOCOL_LOG) appendFileSync(process.env.CONDUIT_PROTOCOL_LOG,JSON.stringify(m)+'\n');
   if(m.id==='question') {
     if(codex) {
       send({method:'turn/plan/updated',params:{plan:[{step:'Choose storage',status:'completed'},{step:'Implement persistence',status:'pending'}]}});

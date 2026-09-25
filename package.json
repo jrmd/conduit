@@ -1,6 +1,6 @@
 {
   "name": "conduit",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "Local desktop workspace for CLI coding agents",
   "author": "Conduit",
@@ -46,7 +46,7 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "dev.jrmd.vulp",
+    "appId": "dev.jrmd.conduit",
     "productName": "Conduit",
     "files": [
       "dist/**/*",

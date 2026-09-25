@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { AttachmentStore } from '../core/attachments.js';
 import { runProvider } from '../core/providers.js';
-if(process.env.VULP_LIVE_IMAGE_CHECK !== '1') throw new Error('Set VULP_LIVE_IMAGE_CHECK=1 to send one read-only Codex image prompt');
-const folder=await fs.mkdtemp(path.join(tmpdir(),'vulp-vision-'));
+if(process.env.CONDUIT_LIVE_IMAGE_CHECK !== '1') throw new Error('Set CONDUIT_LIVE_IMAGE_CHECK=1 to send one read-only Codex image prompt');
+const folder=await fs.mkdtemp(path.join(tmpdir(),'conduit-vision-'));
 const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),60000);
 try{
  const store=new AttachmentStore(path.join(folder,'attachments'));

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, chmod, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 delete process.env.ELECTRON_RUN_AS_NODE;
-const root = process.cwd(), temp = await mkdtemp(path.join(tmpdir(), 'vulp-model-options-'));
+const root = process.cwd(), temp = await mkdtemp(path.join(tmpdir(), 'conduit-model-options-'));
 let app;
 try {
   for (const dir of ['data', 'repo', 'bin', 'codex']) await mkdir(path.join(temp, dir));

@@ -7,7 +7,7 @@ import path from 'node:path';
 
 // Real renderer, IPC, and Git diff against an isolated repository; no provider run.
 const root = process.cwd();
-const temp = await mkdtemp(path.join(tmpdir(), 'vulp-quiet-focus-'));
+const temp = await mkdtemp(path.join(tmpdir(), 'conduit-quiet-focus-'));
 const data = path.join(temp, 'data'), repo = path.join(temp, 'repo');
 let app;
 try {

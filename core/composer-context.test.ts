@@ -7,7 +7,7 @@ import path from "node:path";
 import { projectFiles, resolveReferences, capabilities } from "./composer-context";
 import { normalizeTitle } from "./thread-title";
 test("file references respect ignores, quote spaces and reject symlink escapes", async () => {
- const root=await mkdtemp(path.join(os.tmpdir(),"vulp-context-"));
+ const root=await mkdtemp(path.join(os.tmpdir(),"conduit-context-"));
  try {
   execFileSync("git",["init","-q"],{cwd:root});
   await writeFile(path.join(root,".gitignore"),"secret.txt\n");
@@ -23,7 +23,7 @@ test("file references respect ignores, quote spaces and reject symlink escapes",
  } finally {await rm(root,{recursive:true,force:true});}
 });
 test("local skills expose invocation and hide non-user-invocable skills",async()=>{
- const root=await mkdtemp(path.join(os.tmpdir(),"vulp-skills-"));
+ const root=await mkdtemp(path.join(os.tmpdir(),"conduit-skills-"));
  try {
   for(const name of ["review-fixture","hidden-fixture"]){const dir=path.join(root,".cursor/skills",name);await mkdir(dir,{recursive:true});await writeFile(path.join(dir,"SKILL.md"),`---\nname: ${name}\ndescription: Review project code\n${name.startsWith("hidden")?"user-invocable: false\n":""}---\nInstructions`);}
   const result=await capabilities(root,"cursor");
@@ -39,7 +39,7 @@ test("generated title is short and unadorned",()=>{
 });
 
 test("Copilot discovers GitHub project skills without leaking OpenCode skills",async()=>{
- const root=await mkdtemp(path.join(os.tmpdir(),"vulp-copilot-skills-"));
+ const root=await mkdtemp(path.join(os.tmpdir(),"conduit-copilot-skills-"));
  try {
   for(const [folder,name] of [[".github/skills","copilot-fixture"],[".opencode/skills","opencode-only-fixture"]]){
    const dir=path.join(root,folder,name);await mkdir(dir,{recursive:true});

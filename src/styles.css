@@ -414,7 +414,7 @@ body{background:#070c15;color:#dce5f3}
 .sidebar-footer{border-top:1px solid #172234;color:#6e829d}.topbar{background:#080d17;border-bottom:1px solid #192334}.topbar strong{color:#e4ecf9}.breadcrumb-project{color:#8293aa}
 .conversation{background:#070c15}.conversation:has(.empty-conversation),.conversation:has(.welcome-state){background:radial-gradient(ellipse at 50% 52%,#10223955,transparent 65%),#070c15}
 .empty-conversation,.welcome-state{position:relative;isolation:isolate;align-items:center;justify-content:center;text-align:center;padding:24px 30px;overflow:hidden}
-.empty-conversation:before,.welcome-state:before{content:'';position:absolute;inset:20% 0 0;z-index:-1;background:url('./vulp-landscape.svg') center bottom/100% 100% no-repeat;opacity:.65;mask-image:linear-gradient(transparent,#000 40%)}
+.empty-conversation:before,.welcome-state:before{content:'';position:absolute;inset:20% 0 0;z-index:-1;background:url('./conduit-landscape.svg') center bottom/100% 100% no-repeat;opacity:.65;mask-image:linear-gradient(transparent,#000 40%)}
 .conduit-hero-logo{width:120px;height:120px;object-fit:contain;margin:0 0 18px;filter:drop-shadow(0 10px 30px color-mix(in srgb,var(--q-accent) 35%,transparent))}
 .empty-conversation h1,.welcome-state h1{font-size:30px;line-height:1.25;letter-spacing:-.8px;margin:0;background:linear-gradient(105deg,#31dfea,#6999ff 60%,#b06bfb);background-clip:text;color:transparent}
 .empty-conversation p,.welcome-state p{margin:13px 0 0;color:#93a2bb;font-size:14px}

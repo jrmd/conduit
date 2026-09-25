@@ -4,8 +4,26 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Questions } from './questions';
-import { handoffBrief, planSteps, stepsFromMarkdown } from './planning';
+import { handoffBrief, planSteps, stepsFromMarkdown, planFromResponse, mergePlan } from './planning';
 import { Store } from './store';
+
+test('planning clarification replies do not become a handoff or replace an existing plan', () => {
+  const questions = 'Before I make the plan:\n1. Which storage do you want?\n2. Should this work offline?';
+  assert.equal(planFromResponse(questions), undefined);
+  const existing = {brief:'Saved implementation plan',steps:[]};
+  assert.equal(planFromResponse(questions) ?? existing, existing);
+});
+
+test('a completed plan after steering excludes prior questions and replaces its checklist', () => {
+  const brief = '# Persistence\nGoal: save plans.\n1. Implement persistence\n2. Validate restart';
+  const response = 'Which storage?\n1. SQLite?\n<proposed_plan>\n'+brief+'\n</proposed_plan>\nPlan ready.';
+  assert.deepEqual(planFromResponse(response), {brief, steps:[{text:'Implement persistence',status:'pending'},{text:'Validate restart',status:'pending'}]});
+  assert.equal(planFromResponse('<proposed_plan>\n1. Partial response'), undefined);
+  const old = {brief:'Questions',steps:[{text:'Which storage?',status:'pending' as const}]};
+  assert.deepEqual(mergePlan(old,{brief}).steps, planFromResponse(response)?.steps);
+  assert.equal(mergePlan({brief,steps:[]},{steps:[{text:'Implement',status:'completed'}]}).brief,brief);
+  assert.equal(mergePlan({brief:'',steps:[{text:'Implement persistence',status:'completed'}]},{brief}).steps[0].status,'completed');
+});
 
 test('questions validate ownership and choices, resolve once, and clear on cancellation', async () => {
   const questions = new Questions(() => {});

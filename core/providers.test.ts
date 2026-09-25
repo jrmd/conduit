@@ -244,7 +244,7 @@ describe('provider process runner', () => {
 // Exercise the real subprocess path as well as the block reconciliation unit tests.
 it('Claude runner preserves repeated deltas and reconciles assistant snapshots', async () => {
   if (process.platform === 'win32') return;
-  const root = await mkdtemp(join(tmpdir(), 'vulp-claude-stream-'));
+  const root = await mkdtemp(join(tmpdir(), 'conduit-claude-stream-'));
   const cli = join(root, 'claude');
   const records = [
     { type: 'stream_event', event: { type: 'message_start' } },

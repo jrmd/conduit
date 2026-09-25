@@ -123,7 +123,7 @@ test('commit messages keep subject and body without wrappers', () => {
 
 
 test('first commit context describes the working file, including edits after staging', async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), 'vulp-first-context-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'conduit-first-context-'));
   try {
     git(dir, 'init', '-q');
     await writeFile(path.join(dir, 'new.txt'), 'staged version\n');

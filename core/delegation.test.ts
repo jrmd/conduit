@@ -12,7 +12,7 @@ function setup(run: ProviderRunner, enabled: ('claude' | 'codex')[] = ['claude',
   const parent: RunProviderArgs = {provider:'codex',cwd:'/workspace',prompt:'parent private context',model:'parent-model',sessionId:'parent-session',mode:'full-access',signal:controller.signal,onEvent:e=>events.push(e)};
   const delegation = new Delegation(parent,enabled,run);
   const call = async (name: string, args: unknown) => {
-    const result = await callProviderTool(delegation.tools,`vulp_${name}_agent`,args);
+    const result = await callProviderTool(delegation.tools,`conduit_${name}_agent`,args);
     return {success:result.success,...JSON.parse(result.text)};
   };
   return {parent,controller,events,delegation,call};
@@ -96,7 +96,7 @@ test('parent completion and failure clean up abandoned children',async()=>{
     const run: ProviderRunner = async input=>{
       if(input.readOnlyChild) return new Promise(resolve=>{childSignal=input.signal;input.signal.addEventListener('abort',()=>resolve({}),{once:true});});
       assert.ok(input.tools);
-      await callProviderTool(input.tools,'vulp_spawn_agent',{provider:'claude',task:'review'});
+      await callProviderTool(input.tools,'conduit_spawn_agent',{provider:'claude',task:'review'});
       if(fail) throw new Error('parent failed');
       return {sessionId:'root'};
     };
@@ -112,17 +112,17 @@ test('Claude SDK MCP adapter advertises tools and returns actual child results a
   const s=setup(async input=>{input.onEvent({kind:'text',text:'Codex findings'});return {};});
   const server=await createClaudeToolServer(s.delegation.tools);
   const [clientTransport,serverTransport]=InMemoryTransport.createLinkedPair();
-  const client=new Client({name:'vulp-test',version:'1'});
+  const client=new Client({name:'conduit-test',version:'1'});
   await server.instance.connect(serverTransport);
   await client.connect(clientTransport);
   try {
     assert.equal((await client.listTools()).tools.length,3);
-    const spawned=await client.callTool({name:'vulp_spawn_agent',arguments:{provider:'codex',task:'review'}});
+    const spawned=await client.callTool({name:'conduit_spawn_agent',arguments:{provider:'codex',task:'review'}});
     const content=spawned.content as {type:string;text:string}[];
     const {agentId}=JSON.parse(content[0].text);
-    const result=await client.callTool({name:'vulp_wait_agent',arguments:{agentId,timeoutMs:100}});
+    const result=await client.callTool({name:'conduit_wait_agent',arguments:{agentId,timeoutMs:100}});
     assert.match(JSON.stringify(result),/Codex findings/);
-    const error=await client.callTool({name:'vulp_wait_agent',arguments:{agentId:'foreign'}});
+    const error=await client.callTool({name:'conduit_wait_agent',arguments:{agentId:'foreign'}});
     assert.equal(error.isError,true);
   } finally {await client.close();await server.instance.close();await s.delegation.close();}
 });

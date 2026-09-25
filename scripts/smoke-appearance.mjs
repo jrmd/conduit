@@ -3,7 +3,7 @@ import { expect } from 'playwright/test';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-const root=process.cwd(), temp=await mkdtemp(path.join(tmpdir(),'vulp-appearance-'));
+const root=process.cwd(), temp=await mkdtemp(path.join(tmpdir(),'conduit-appearance-'));
 const data=path.join(temp,'data'), project=path.join(temp,'project');
 await mkdir(data);await mkdir(project);
 let app,page;
@@ -27,15 +27,15 @@ async function aligned(name){
 try{
  await launch();await aligned('Open folder');
  await page.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');await shader(1);
- await page.screenshot({path:path.join(root,'artifacts','vulp-open-project-light.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-open-project-light.png')});
  await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await shader(0);
- await page.screenshot({path:path.join(root,'artifacts','vulp-open-project-dark.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-open-project-dark.png')});
  await page.getByRole('button',{name:'Agent settings',exact:true}).click();await aligned('Back to chat');await page.getByRole('tab',{name:'Agents',exact:true}).click();await aligned('Refresh discovery');await page.getByRole('tab',{name:'Appearance',exact:true}).click();
  await expect(page.getByRole('button',{name:'System',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Light',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
  expect(await app.evaluate(({nativeTheme})=>nativeTheme.themeSource)).toBe('light');
  await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');
- await page.screenshot({path:path.join(root,'artifacts','vulp-settings-light.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-settings-light.png')});
  await app.close();app=null;await launch();await expect(page.locator('html')).toHaveAttribute('data-theme','light');await shader(1);
  await page.getByRole('button',{name:'Agent settings',exact:true}).click();await expect(page.getByRole('button',{name:'Light',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Dark',exact:true}).click();await page.emulateMedia({colorScheme:'light'});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
@@ -44,7 +44,7 @@ try{
  await page.getByRole('button',{name:'Back to chat',exact:true}).click();await shader(1);
  await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]})},project);
  await page.getByRole('button',{name:'Open folder',exact:true}).click();await expect(page.getByTestId('model-selector')).toBeVisible();await shader(1);
- await page.getByTestId('model-selector').click();await page.screenshot({path:path.join(root,'artifacts','vulp-models-light.png')});await page.keyboard.press('Escape');
- await page.setViewportSize({width:850,height:600});await page.screenshot({path:path.join(root,'artifacts','vulp-new-thread-light-850.png')});
+ await page.getByTestId('model-selector').click();await page.screenshot({path:path.join(root,'artifacts','conduit-models-light.png')});await page.keyboard.press('Escape');
+ await page.setViewportSize({width:850,height:600});await page.screenshot({path:path.join(root,'artifacts','conduit-new-thread-light-850.png')});
  console.log('PASS: empty-project shader in both themes, icon/text centerlines, system changes, explicit overrides, native theme, saved preference after restart, new-project shader and light model picker.');
 }finally{if(app)await app.close();await rm(temp,{recursive:true,force:true})}

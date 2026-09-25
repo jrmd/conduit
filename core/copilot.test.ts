@@ -13,7 +13,7 @@ test('Copilot models use advertised config options or legacy model state', () =>
 });
 
 test('Copilot discovery, ACP-only routing, model selection, resume, failures and cancellation', { skip: process.platform === 'win32' }, async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'vulp-copilot-test-'));
+  const dir = await mkdtemp(join(tmpdir(), 'conduit-copilot-test-'));
   const oldPath = process.env.PATH;
   const executable = join(dir, 'copilot');
   const log = join(dir, 'rpc.jsonl');

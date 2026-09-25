@@ -83,9 +83,9 @@ Typecheck, build, Linux AppImage packaging, and the packaged `scripts/smoke-work
 
 Screenshots were visually inspected at 1440x900 and 850x600: [compact model picker](artifacts/compact-picker-015-850.png), [live inline activity](artifacts/activity-live-015.png), and [completed turn](artifacts/activity-complete-015.png). These are replay fixture conversations. macOS and Windows were not tested.
 
-## Vulp redesign (0.2.0)
+## Conduit redesign (0.2.0)
 
-Renamed the desktop product, executable, title, and package to Vulp; retained the legacy user-data directory for existing workspaces. The supplied JPEG is preserved as the UI logo and converted to PNG for the application icon. Added a code-native landscape, new palette, and working prompt starters. Typecheck and Linux packaging passed. Packaged Electron replay checks passed at 1440x900 and 850x600, including the Vulp title, starter input, model and effort selection, provider locking, activity ordering, cancellation, and restart persistence. Screenshots: `artifacts/vulp-home-1440.png`, `artifacts/vulp-picker-850.png`, `artifacts/vulp-activity-complete.png`. No new authenticated provider runs or macOS/Windows checks were performed.
+Renamed the desktop product, executable, title, and package to Conduit; retained the legacy user-data directory for existing workspaces. The supplied JPEG is preserved as the UI logo and converted to PNG for the application icon. Added a code-native landscape, new palette, and working prompt starters. Typecheck and Linux packaging passed. Packaged Electron replay checks passed at 1440x900 and 850x600, including the Conduit title, starter input, model and effort selection, provider locking, activity ordering, cancellation, and restart persistence. Screenshots: `artifacts/conduit-home-1440.png`, `artifacts/conduit-picker-850.png`, `artifacts/conduit-activity-complete.png`. No new authenticated provider runs or macOS/Windows checks were performed.
 
 ## Compact workspace controls (0.2.1)
 
@@ -97,13 +97,13 @@ The read/edit regression was reproduced by a failing resumed-thread store test a
 
 GitHub release workflows build Linux AppImage and Windows NSIS plus updater manifests. macOS publishing is opt-in and requires signing/notarization secrets. Private GitHub updates use the signed-in gh CLI token only inside the main process, with no credential persisted or bundled. Installed AppImages check automatically; unpacked/test builds do not. Update installation is explicit and blocked while a run is active.
 
-Live image proof: `VULP_LIVE_IMAGE_CHECK=1 node --import tsx scripts/check-live-image.mts` sent one read-only prompt through the production Codex runner with the managed PNG attachment. The CLI replied `Fox`. No tools were requested. Claude and OpenCode image input remain protocol-tested only. GitHub Checks passed on the initial source push.
+Live image proof: `CONDUIT_LIVE_IMAGE_CHECK=1 node --import tsx scripts/check-live-image.mts` sent one read-only prompt through the production Codex runner with the managed PNG attachment. The CLI replied `Fox`. No tools were requested. Claude and OpenCode image input remain protocol-tested only. GitHub Checks passed on the initial source push.
 
 GitHub release `v0.3.0` published successfully with Linux AppImage, Windows NSIS installer/blockmap, and both latest manifests. The production AppImage was launched in an isolated Electron profile by `scripts/smoke-updates.mjs`; its real private feed authenticated via gh and returned version 0.3.0 as current. A simulated older current-version value exercised a real GitHub asset download and checksum verification to the ready state. No self-replacement/restart was performed during that smoke. macOS was intentionally skipped pending signing credentials.
 
 ## New-thread shader (0.3.1)
 
-Integrated the user-supplied @jrmd OpenShaders field/halftone shader with its original constants and dark-theme math. Vulp supplies its page background colour and caps decorative animation at 30 fps. The canvas is scoped to the new-thread state and releases programs, textures, framebuffer, observers, and animation callbacks on unmount. Reduced motion renders a still frame; hidden/offscreen rendering pauses; context loss falls back to the plain background.
+Integrated the user-supplied @jrmd OpenShaders field/halftone shader with its original constants and dark-theme math. Conduit supplies its page background colour and caps decorative animation at 30 fps. The canvas is scoped to the new-thread state and releases programs, textures, framebuffer, observers, and animation callbacks on unmount. Reduced motion renders a still frame; hidden/offscreen rendering pauses; context loss falls back to the plain background.
 
 Typecheck/build and Electron replay smoke passed. The smoke verifies a linked WebGL2 program without GL errors, stable time under reduced motion, time advancing again after reduced motion is disabled, fallback after forced context loss, and removal of the canvas once a prompt is sent. Screenshots inspected at 1440x900 and 850x600.
 
@@ -111,7 +111,7 @@ Typecheck/build and Electron replay smoke passed. The smoke verifies a linked We
 
 Moved model, effort, and permission controls into the composer below the textarea, vertically aligned with Send/Stop. Attachment action and preview chips remain above the composer. Typecheck and Electron replay smoke passed, including a geometry assertion for controls below the input and sharing the send-button centreline. Screenshots inspected at desktop and compact sizes; popovers, focus return, attachments, cancellation, and permission changes remain covered.
 
-## Vulp 0.3.3 — desktop layout and response rendering
+## Conduit 0.3.3 — desktop layout and response rendering
 
 - `pnpm typecheck`, `pnpm test`: pass (34 tests). New response-stream regressions cover repeated Claude deltas, final snapshot reconciliation, repeated complete messages, block boundaries and forwarded child exclusion. A replay CLI also exercises the real runner path.
 - `pnpm package:linux`: AppImage built successfully.
@@ -119,7 +119,7 @@ Moved model, effort, and permission controls into the composer below the textare
 - Inspected screenshots at 1440×900 and 850×600. A simulated macOS CSS class verifies header drag/no-drag regions and 94px logo clearance. This is not native macOS window verification.
 - T3 source findings and remaining architectural differences are recorded in `docs/t3-response-notes.md`. No fresh authenticated Claude/OpenCode/Cursor run was performed for these changes.
 
-## Vulp 0.3.4 — appearance and button alignment
+## Conduit 0.3.4 — appearance and button alignment
 
 - Added shared flex alignment for primary/secondary icon-label buttons and consistent lower-composer control height. DOM geometry checks compare the actual text and SVG centerlines for Open folder, Back to chat and Refresh discovery.
 - Open a project and New thread both mount the supplied WebGL2 halftone shader, including theme-aware color passes, reduced motion and fallback behavior. This does not convert the shader to WebGPU.
@@ -127,21 +127,21 @@ Moved model, effort, and permission controls into the composer below the textare
 - `pnpm typecheck`, Linux packaging and both packaged smoke scripts pass. `scripts/smoke-appearance.mjs` covers system changes, explicit overrides, stored preference after restart, shader uniform values in both themes and empty-project to new-project navigation. `scripts/smoke-workspace-controls.mjs` also captures light-mode rich responses and expanded activity.
 - Inspected screenshots at 1440×900 and 850×600; native Mac/Windows appearance remains unverified on this Linux host.
 
-## Vulp 0.3.5 — Changes header actions
+## Conduit 0.3.5 — Changes header actions
 
 Commit, Push and Create PR now live in a compact Actions menu in the Changes header; the footer actions were removed. Existing dialogs and Git preconditions are preserved. `pnpm typecheck`, build and packaged `scripts/smoke-git-actions.mjs` pass. The isolated Git fixture verifies file-selection/upstream guards, Commit/PR dialog routing, arrow-key navigation, Escape focus return, outside dismissal, and light/dark layouts without executing a push or PR. Light-mode file and branch labels were also corrected during visual inspection.
 
-## Vulp 0.4.0 — thread organization and GitHub lookup
+## Conduit 0.4.0 — thread organization and GitHub lookup
 
 - Removed the topbar delete action. Thread menus retain deletion and add Generate summary and Settle/Restore.
 - New threads persist their creation branch and sanitized remote repository URL; each subsequent run records its current branch separately. Legacy threads retain unknown historical branch information rather than inventing it.
 - Active-thread PR lookup uses `gh pr list --repo <captured repository> --head <creation branch> --state all`. It refreshes on opening the thread, window focus, each visible minute and explicit refresh. Errors remain visible; number/title/state and View in GitHub are shown when found. The current checkout does not choose the lookup branch.
-- Live authenticated read: `jrmd/vulp` main returned no PR. The same lookup implementation against `pingdotgg/t3code` branch `feat/nested-subagent-lineage` returned open PR #13438 on 2026-09-24. This was read-only; no PR was created for testing.
+- Live authenticated read: `jrmd/conduit` main returned no PR. The same lookup implementation against `pingdotgg/t3code` branch `feat/nested-subagent-lineage` returned open PR #13438 on 2026-09-24. This was read-only; no PR was created for testing.
 - Summary provider/model is chosen in Settings and saved locally. Generate summary runs the installed CLI in a separate temporary directory/session, sends at most the last 40,000 transcript characters and saves at most 600 output characters. It does not alter the source thread session or messages. Timeout/cancellation and existing busy/deletion guards apply.
 - Search covers title, summary, recorded branches and message text, including settled threads. Settled conversations can be restored; sending into one returns it to Active.
 - `pnpm typecheck`, 35 core tests and Linux build pass. `smoke-thread-features.mjs` exercises real CLI subprocess replay for exact gh arguments despite another checked-out branch, PR discovery/linking, selected summary model, isolated cwd, persisted metadata, search, settlement and restore. Summary generation is replay-verified, not a new authenticated provider completion.
 
-## Vulp 0.6.0 — workspaces, approvals, Copilot and conversation refresh
+## Conduit 0.6.0 — workspaces, approvals, Copilot and conversation refresh
 
 - `pnpm typecheck` and all 51 core tests pass. `pnpm package:linux` builds the 0.6.0 AppImage with the Claude Agent SDK dependency.
 - Packaged Linux Electron checks cover approvals (approve/deny/cancel/reload), Copilot controls, worktree creation and provider cwd, model options and menu stability, review panels, sidebar organization, appearance, provider settings, thread titles/settlement and PR controls. Real IPC, temporary Git repositories and deterministic provider subprocesses are used. No fresh authenticated provider response is claimed.
@@ -184,3 +184,10 @@ Development and packaged Linux Electron configuration smokes retained an existin
 The composer accepts follow-ups during active runs. Enter queues; Steer now / Alt+Enter interrupts the current run and resumes the same provider session with the correction before queued follow-ups. This uses interrupt/resume, not native in-turn injection. Stop pauses pending work; pending messages and attachment/reference IDs persist in state, and app restart requires Resume. Dispatch records the user message and removes its queue entry in one state write.
 
 Typecheck, production build, and 68 core tests passed. `env -u ELECTRON_RUN_AS_NODE J2CODE_VIRTUAL_DISPLAY=1 node scripts/smoke-message-queue.mjs` verifies real Electron IPC, FIFO dispatch, removal, renderer reload, steering order, session resume, Stop, restart persistence, and pausing after unavailable context. Desktop and 430px composer screenshots were inspected; controls wrap on narrow windows. Provider responses are deterministic Codex protocol fixtures, rendered with software/X11 on Linux; live-provider steering and native Windows/macOS execution remain unverified.
+
+
+## Conduit 0.7.2 — planning recovery and complete rename
+
+Clarification text no longer becomes a plan automatically. Completed tagged briefs provide a recovery path when saving fails. Claude's plan-save tool is permitted without permitting implementation actions; ExitPlanMode no longer claims an absent plan was saved. Updated briefs replace stale checklist entries and preserve matching native step statuses. Tools, preference keys, package identity, documentation, scripts, and asset names consistently use Conduit.
+
+All 76 core tests, typecheck, production build, and Linux AppImage packaging passed. Packaged planning smoke passed question reload/answers, checklist and brief persistence, fresh-context handoff, provider changes, restart, and mobile layout. Development Electron queue/steering and Git-action smokes passed, including interrupt/resume, persisted queues, real commits, and push to a temporary local bare remote. These are software-rendered Linux checks with provider fixtures; the original live Opus failure and native Windows/macOS runtime remain unverified.

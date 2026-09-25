@@ -4,7 +4,7 @@ import { mkdtemp,mkdir,writeFile,chmod,readFile,rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'vulp-threads-'));
+const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'conduit-threads-'));
 const data=path.join(temp,'data'),repo=path.join(temp,'repo'),bin=path.join(temp,'bin'),home=path.join(temp,'codex');let app;
 try{
  for(const p of [data,repo,bin,home])await mkdir(p);
@@ -27,7 +27,7 @@ try{
  await page.getByRole('button',{name:/^Settled/}).click();await expect(page.locator('.thread-item')).toHaveCount(2);
  await page.getByLabel('Search threads',{exact:true}).fill('delimiter');await expect(page.locator('.thread-item')).toHaveCount(1);await page.getByLabel('Clear thread search').click();
  await page.getByRole('button',{name:'Restore Fixed the parser; regression tests pass.',exact:true}).focus();await page.getByRole('button',{name:'Restore Fixed the parser; regression tests pass.',exact:true}).click();await page.getByRole('button',{name:/^Settled/}).click();await expect(page.locator('.thread-item')).toHaveCount(1);
- await page.screenshot({path:path.join(root,'artifacts','vulp-thread-metadata.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-thread-metadata.png')});
  // New threads pin their own creation branch, independently from older threads.
  const created=await page.evaluate(()=>window.j2code.createThread('p','codex','read'));expect(created.branch).toBe('feature/current');expect(created.repository).toBe('https://github.com/jrmd/conduit');
  await page.evaluate(()=>window.j2code.send('t','Record a run on the current branch'));

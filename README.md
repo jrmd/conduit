@@ -71,6 +71,6 @@ Fox artwork and the new-thread halftone shader supplied by the project owner (@j
 
 On macOS, `pnpm dev` creates a cached, ad-hoc-signed `Conduit.app` in `node_modules/.cache/conduit-electron`, with the Conduit Dock name, menu name, and supplied icon. It uses the installed Electron runtime and macOS system tools; the first launch takes a little longer. The cache rebuilds when Electron, the logo, or the launcher changes.
 
-The existing `dev.jrmd.vulp` packaged application ID, `j2code` data directory, and `vulp.*` preference keys are retained for upgrade continuity. New packages and update checks use `jrmd/conduit`.
+Packages use the `dev.jrmd.conduit` application ID, `conduit.*` preference keys, and the `jrmd/conduit` update repository. The existing `j2code` data directory is retained so saved projects and threads remain available. Appearance and other local UI preferences use the new keys and start with defaults. Start a fresh Codex thread to register the renamed `conduit_*` tools; existing provider sessions retain the tool names registered when they were created.
 
 The Conduit logo is an editable vector in `assets/icon.svg`, with a transparent 1024px PNG for Electron packaging. To regenerate the public SVG/PNG and packaged icon, run `node scripts/build-icon.mjs` with Playwright Chromium installed, or set `CHROMIUM_PATH` to a local Chromium executable. Icon design notes and the generation prompt are in [docs/conduit-icon.md](docs/conduit-icon.md).

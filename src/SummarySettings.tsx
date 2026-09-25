@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ModelOption, ProviderId, ProviderInfo } from '../shared/api';
 export type SummaryChoice = { provider: ProviderId; model: string };
 export function readSummaryChoice(): SummaryChoice | null {
-  try { const value = JSON.parse(localStorage.getItem('vulp.summary-model') || 'null'); return value && ['codex','claude','cursor','opencode','copilot'].includes(value.provider) && typeof value.model === 'string' ? value : null; } catch { return null; }
+  try { const value = JSON.parse(localStorage.getItem('conduit.summary-model') || 'null'); return value && ['codex','claude','cursor','opencode','copilot'].includes(value.provider) && typeof value.model === 'string' ? value : null; } catch { return null; }
 }
 export function SummarySettings({ providers, choice, onChange }: { providers: ProviderInfo[]; choice: SummaryChoice | null; onChange(choice: SummaryChoice | null): void }) {
   const [models, setModels] = useState<ModelOption[]>([]);

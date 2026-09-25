@@ -8,8 +8,8 @@ Question cards support single/multiple choices, optional custom text, submit and
 
 ## Provider integration
 
-- Codex: native `collaborationMode`, `turn/plan/updated`, plan items and `item/tool/requestUserInput`. Planning forces read-only sandbox permissions. Execution explicitly returns to default collaboration mode. The app also exposes `vulp_update_plan` for a durable implementation brief.
-- Claude: SDK plan permission mode, `AskUserQuestion` through `canUseTool`, `TodoWrite` updates, and `vulp_update_plan`. ExitPlanMode does not silently start execution; implementation is a separate user action.
+- Codex: native `collaborationMode`, `turn/plan/updated`, plan items and `item/tool/requestUserInput`. Planning forces read-only sandbox permissions. Execution explicitly returns to default collaboration mode. The app also exposes `conduit_update_plan` for a durable implementation brief.
+- Claude: SDK plan permission mode, `AskUserQuestion` through `canUseTool`, `TodoWrite` updates, and `conduit_update_plan`. ExitPlanMode does not silently start execution; implementation is a separate user action.
 - Cursor: advertised ACP plan mode, `cursor/ask_question`, `cursor/create_plan`, `cursor/update_todos`, and ACP plan updates. Cursor questions accept the provider's option IDs; its current response schema does not provide a free-text answer field.
 - Other ACP providers: structured plan updates are displayed. Plan mode is used only when advertised by the provider; unsupported modes fail explicitly. No generic ACP question API is assumed.
 

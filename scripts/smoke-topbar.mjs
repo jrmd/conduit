@@ -4,7 +4,7 @@ import { mkdtemp,mkdir,writeFile,chmod,readFile,rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'vulp-threads-'));
+const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'conduit-threads-'));
 const data=path.join(temp,'data'),repo=path.join(temp,'repo'),bin=path.join(temp,'bin'),home=path.join(temp,'codex');let app;
 try{
  for(const p of [data,repo,bin,home])await mkdir(p);

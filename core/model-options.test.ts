@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { discoverModels, validateModelSettings, parseClaudeModels } from './providers';
 import { runInteractiveProvider } from './interactive-provider';
 test('capability discovery and validation reject unsupported context and speed', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'vulp-capabilities-'));
+  const dir = await mkdtemp(join(tmpdir(), 'conduit-capabilities-'));
   const original = process.env.CODEX_HOME;
   try {
     process.env.CODEX_HOME = dir;
@@ -36,12 +36,12 @@ test('capability discovery and validation reject unsupported context and speed',
   } finally { if(original === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = original; await rm(dir,{recursive:true,force:true}); }
 });
 test('Codex receives context override and explicit speed on new and resumed turns', async () => {
-  const dir = await mkdtemp(join(tmpdir(),'vulp-model-wire-'));
+  const dir = await mkdtemp(join(tmpdir(),'conduit-model-wire-'));
   try {
     const executable = join(dir,'provider'); await copyFile('scripts/fixtures/approval-provider.mjs',executable); await chmod(executable,0o755);
     for(const fast of [true,false]) {
       const log = join(dir,`wire-${fast}.jsonl`);
-      await runInteractiveProvider({provider:'codex',cwd:dir,prompt:'test',mode:'supervised',model:'example',effort:'high',contextWindow:1000000,fastMode:fast,sessionId:fast?undefined:'existing',signal:AbortSignal.timeout(5000),onEvent:()=>{},onApproval:async()=>false},executable,{...process.env,VULP_PROTOCOL_LOG:log});
+      await runInteractiveProvider({provider:'codex',cwd:dir,prompt:'test',mode:'supervised',model:'example',effort:'high',contextWindow:1000000,fastMode:fast,sessionId:fast?undefined:'existing',signal:AbortSignal.timeout(5000),onEvent:()=>{},onApproval:async()=>false},executable,{...process.env,CONDUIT_PROTOCOL_LOG:log});
       const records = (await readFile(log,'utf8')).trim().split('\n').map(line=>JSON.parse(line));
       const start = records.find(row => row.method === (fast?'thread/start':'thread/resume'));
       assert.equal(start.params.config.model_context_window,1000000);

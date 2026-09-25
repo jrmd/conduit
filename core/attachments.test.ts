@@ -7,7 +7,7 @@ import { AttachmentStore } from './attachments';
 import { buildAttachmentInvocation } from './providers';
 
 test('attachments persist independently of source files and reject invalid IDs, sizes and spoofed images', async()=>{
- const dir=await mkdtemp(path.join(tmpdir(),'vulp-attachments-'));
+ const dir=await mkdtemp(path.join(tmpdir(),'conduit-attachments-'));
  try {
   const store=new AttachmentStore(dir);
   const item=await store.import('notes.txt',Buffer.from('hello'));

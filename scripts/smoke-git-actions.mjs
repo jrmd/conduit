@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, chmod, readFile, rm } from 'node:fs/promises
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'vulp-git-actions-')),data=path.join(temp,'data'),repo=path.join(temp,'repo');
+const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'conduit-git-actions-')),data=path.join(temp,'data'),repo=path.join(temp,'repo');
 const bin=path.join(temp,'bin'), log=path.join(temp,'prompt.json');
 const git=(...args)=>execFileSync('git',args,{cwd:repo,encoding:'utf8'}).trim();
 let app;
@@ -22,29 +22,29 @@ execFileSync('git',['init','-b','main'],{cwd:repo});git('config','user.name','UI
  await expect(page.getByRole('menuitem',{name:'Push branch',exact:true})).toBeDisabled();await expect(page.getByRole('menuitem',{name:/Commit changes/})).toBeEnabled();
  await page.keyboard.press('Escape');await expect(trigger).toBeFocused();await expect(page.getByRole('menu',{name:'Git actions'})).toHaveCount(0);
  await trigger.click();await expect(page.getByRole('menuitem',{name:/Commit changes/})).toBeFocused();
- await page.screenshot({path:path.join(root,'artifacts','vulp-git-actions-dark.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-git-actions-dark.png')});
  await page.getByRole('menuitem',{name:/Commit changes/}).click();await expect(page.getByRole('heading',{name:'Commit changes',exact:true})).toBeVisible();
  const dialog=page.getByRole('dialog',{name:'Commit changes',exact:true});
  await expect(dialog.locator('.commit-files').getByRole('checkbox')).toHaveCount(3);for(const check of await dialog.locator('.commit-files').getByRole('checkbox').all())await expect(check).toBeChecked();
  await dialog.getByRole('button',{name:'Generate',exact:true}).click();await expect(dialog.getByRole('button',{name:'Commit',exact:true})).toBeDisabled();
  await expect(dialog.getByLabel('Commit message',{exact:true})).toHaveValue('Add greeting files');
  const prompt=JSON.parse(await readFile(log,'utf8'));expect(prompt.input).toContain('+hello');expect(prompt.input).toContain('+second greeting');expect(prompt.cwd).not.toBe(repo);
- await page.screenshot({path:path.join(root,'artifacts','vulp-commit-dark.png')});
+ await page.screenshot({path:path.join(root,'artifacts','conduit-commit-dark.png')});
  await dialog.getByRole('checkbox',{name:'second.txt'}).uncheck();await dialog.getByLabel('Commit message',{exact:true}).fill('Add first greeting');await dialog.getByRole('button',{name:'Commit',exact:true}).click();await expect(dialog).toBeHidden();expect(git('show','HEAD:hello.txt')).toBe('hello');expect(git('status','--porcelain')).toContain('second.txt');
  await page.getByRole('button',{name:'Commit all 1',exact:true}).click();await expect(dialog.getByRole('checkbox',{name:'second.txt'})).toBeChecked();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
  await trigger.focus();await page.keyboard.press('ArrowDown');await page.keyboard.press('End');await expect(page.getByRole('menuitem',{name:'Create pull request',exact:true})).toBeFocused();await page.keyboard.press('Enter');await expect(page.getByRole('heading',{name:'Create pull request',exact:true})).toBeVisible();await page.getByRole('button',{name:'Cancel',exact:true}).click();
  await trigger.click();await page.locator('.panel-title').click();await expect(page.getByRole('menu',{name:'Git actions'})).toHaveCount(0);
- await page.getByRole('button',{name:'Agent settings',exact:true}).click();await page.getByRole('tab',{name:'Appearance',exact:true}).click();expect(await page.getByRole('tab',{name:'Appearance',exact:true}).evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');await page.getByRole('button',{name:'Light',exact:true}).click();await page.getByRole('button',{name:'Back to chat',exact:true}).click();await trigger.click();await page.screenshot({path:path.join(root,'artifacts','vulp-git-actions-light.png')});
+ await page.getByRole('button',{name:'Agent settings',exact:true}).click();await page.getByRole('tab',{name:'Appearance',exact:true}).click();expect(await page.getByRole('tab',{name:'Appearance',exact:true}).evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');await page.getByRole('button',{name:'Light',exact:true}).click();await page.getByRole('button',{name:'Back to chat',exact:true}).click();await trigger.click();await page.screenshot({path:path.join(root,'artifacts','conduit-git-actions-light.png')});
  await page.getByRole('menuitem',{name:/Commit changes/}).click();
  const bare=path.join(temp,'remote.git');await mkdir(bare);execFileSync('git',['init','--bare','-q'],{cwd:bare});git('remote','add','origin',bare);
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Refresh changes',exact:true}).click();await page.getByRole('button',{name:'Commit all 1',exact:true}).click();
  await dialog.getByLabel('Push after committing').check();await expect(dialog.getByLabel('Create a feature branch before committing')).toBeChecked();await dialog.getByLabel('Feature branch',{exact:true}).fill('feature/greetings');
- for(const [width,height] of [[1440,900],[800,700],[430,800]]){await page.setViewportSize({width,height});const box=await dialog.boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);expect(box.y+box.height).toBeLessThanOrEqual(height);await page.screenshot({path:path.join(root,'artifacts',`vulp-commit-light-${width}.png`)});}
+ for(const [width,height] of [[1440,900],[800,700],[430,800]]){await page.setViewportSize({width,height});const box=await dialog.boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);expect(box.y+box.height).toBeLessThanOrEqual(height);await page.screenshot({path:path.join(root,'artifacts',`conduit-commit-light-${width}.png`)});}
  await dialog.getByRole('button',{name:'Commit and push',exact:true}).click();await expect(dialog).toBeHidden();expect(git('status','--porcelain')).toBe('');
  expect(git('branch','--show-current')).toBe('feature/greetings');expect(git('log','-1','--format=%s')).toBe('Add greeting files');expect(git('rev-parse','@{upstream}')).toBe(git('rev-parse','HEAD'));expect(git('ls-tree','--name-only','main')).toBe('hello.txt');
  await mkdir(path.join(repo,'.github'));await writeFile(path.join(repo,'.github','pull_request_template.md'),'## Summary\n## Testing');
  await page.setViewportSize({width:1440,height:900});if(!await trigger.isVisible())await page.getByRole('button',{name:'Toggle changes',exact:true}).click();await trigger.click();await page.getByRole('menuitem',{name:'Create pull request',exact:true}).click();await page.getByRole('button',{name:'Generate PR',exact:true}).click();await expect(page.getByLabel('Title',{exact:true})).toHaveValue('Add greeting files');await expect(page.getByText('Using .github/pull_request_template.md',{exact:false})).toBeVisible();
- expect(JSON.parse(await readFile(log,'utf8')).input).toContain('## Testing');await page.screenshot({path:path.join(root,'artifacts','vulp-generated-pr.png')});
+ expect(JSON.parse(await readFile(log,'utf8')).input).toContain('## Testing');await page.screenshot({path:path.join(root,'artifacts','conduit-generated-pr.png')});
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.locator('.changes-footer').count()).toBe(0);
  console.log('PASS: default all files, real commit IPC in a temporary repository, narrowed selection, generated message via CLI fixture, keyboard navigation, and dark/light responsive dialogs. Blank-message commit and push verified against a local bare remote; PR generation uses CLI fixtures. No GitHub PR created.');

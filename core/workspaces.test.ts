@@ -8,7 +8,7 @@ import { prepareWorkspace, workspaceInfo } from './workspaces';
 import { Store } from './store';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 test('workspace selection isolates dirty checkout, persists, and switches local branches safely', async () => {
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'vulp-workspaces-'));
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'conduit-workspaces-'));
   const repo = path.join(temp, 'repo'), worktrees = path.join(temp, 'worktrees');
   try {
     await mkdir(repo); git(repo, 'init', '-qb', 'main');
@@ -38,7 +38,7 @@ test('workspace selection isolates dirty checkout, persists, and switches local 
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 test('plain directories remain usable and unborn repositories reject worktrees', async () => {
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'vulp-workspaces-'));
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'conduit-workspaces-'));
   try {
     assert.equal((await workspaceInfo(temp)).isRepository, false);
     assert.equal((await prepareWorkspace(temp, { mode: 'local' }, temp)).path, temp);

@@ -10,11 +10,32 @@ import { callProviderTool, type ProviderTool } from './delegation';
 
 export async function createClaudeToolServer(tools: readonly ProviderTool[]) {
   const { createSdkMcpServer, tool } = await import('@anthropic-ai/claude-agent-sdk');
-  return createSdkMcpServer({ name: 'vulp', version: '1.0.0', tools: tools.map(definition =>
+  return createSdkMcpServer({ name: 'conduit', version: '1.0.0', tools: tools.map(definition =>
     tool(definition.name, definition.description, definition.schema, async args => {
       const result = await callProviderTool(tools, definition.name, args);
       return { content: [{ type: 'text' as const, text: result.text }], isError: !result.success };
     }, { alwaysLoad: true })) });
+}
+
+export function createClaudePermissionHandler(input: RunProviderArgs, ask: (name: string, params: unknown) => Promise<boolean>) {
+  return async (name: string, params: Record<string, unknown>) => {
+    if (input.signal.aborted) return {behavior:'deny' as const,message:'Run cancelled'};
+    // Saving an app-owned plan is allowed in Plan mode; the generic
+    // planning gate below intentionally denies implementation actions.
+    if (!input.readOnlyChild && name === 'mcp__conduit__conduit_update_plan' && input.tools?.some(tool => tool.name === 'conduit_update_plan')) {
+      return {behavior:'allow' as const,updatedInput:params};
+    }
+    if(name === 'AskUserQuestion' && input.onQuestion && !input.readOnlyChild) {
+      const qs = (params.questions as any[] || []).map((q:any,i:number)=>({id:String(i),text:q.question,options:(q.options || []).map((o:any)=>({value:o.label,label:o.label,description:o.description})),multiple:q.multiSelect,freeText:true}));
+      const answers = await input.onQuestion(qs);
+      return answers ? {behavior:'allow' as const,updatedInput:{...params,answers:Object.fromEntries(qs.map(q=>[q.text,answers[q.id].join(', ')]))}} : {behavior:'deny' as const,message:'User skipped the questions'};
+    }
+    if(name === 'ExitPlanMode' && input.planning) {
+      if(typeof params.plan === 'string' && params.plan.trim()) input.onPlan?.({brief:params.plan});
+      return {behavior:'deny' as const,message:'Remain in planning mode. Save the complete brief and steps with mcp__conduit__conduit_update_plan, then end this turn with the complete plan inside <proposed_plan> tags. The user will start implementation in a fresh session.'};
+    }
+    return await ask(name,params) ? {behavior:'allow' as const,updatedInput:params} : {behavior:'deny' as const,message:'Action denied'};
+  };
 }
 
 export function codexPermissions(mode: ReturnType<typeof approvalMode>) {
@@ -37,27 +58,16 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
     const prompt = async function*() { yield {type:"user" as const,session_id:input.sessionId || "",parent_tool_use_id:null,message:{role:"user" as const,content}}; };
     const streamText = createClaudeTextStream(); const activity = createActivityParser("claude");
     let sessionId = input.sessionId;
-    const mcpServers = input.tools?.length ? { vulp: await createClaudeToolServer(input.tools) } : undefined;
+    const mcpServers = input.tools?.length ? { conduit: await createClaudeToolServer(input.tools) } : undefined;
     const run = query({prompt:prompt(),options:{cwd:input.cwd,env,pathToClaudeCodeExecutable:executable,abortController:controller,
       resume:input.sessionId,model:input.model,
       settings:{fastMode:input.fastMode ?? false, ...(input.readOnlyChild ? {disableAllHooks:true} : {})},includePartialMessages:true,settingSources:input.readOnlyChild ? [] : ["user","project","local"],
       // Recent models omit thinking text unless a summarized display is requested.
       extraArgs:{"thinking-display":"summarized",...(input.effort ? {effort:input.effort} : {}), ...(input.readOnlyChild ? {'strict-mcp-config':null} : {})},
-      ...(input.readOnlyChild ? {tools:['Read','Glob','Grep'], allowedTools:['Read','Glob','Grep'], disallowedTools:['Agent','Task','Bash','Write','Edit','NotebookEdit']} : {mcpServers, allowedTools:input.tools?.map(t=>`mcp__vulp__${t.name}`)}),
+      ...(input.readOnlyChild ? {tools:['Read','Glob','Grep'], allowedTools:['Read','Glob','Grep'], disallowedTools:['Agent','Task','Bash','Write','Edit','NotebookEdit']} : {mcpServers, allowedTools:input.tools?.map(t=>`mcp__conduit__${t.name}`)}),
       permissionMode:input.planning ? "plan" : input.readOnlyChild ? 'default' : mode === "full-access" ? "bypassPermissions" : mode === "auto-edits" ? "acceptEdits" : mode === "auto" ? "auto" : "default",
       allowDangerouslySkipPermissions:!input.readOnlyChild && !input.planning && mode === "full-access",
-      canUseTool:async (name,params) => {
-        if(name === 'AskUserQuestion' && input.onQuestion && !input.readOnlyChild) {
-          const qs = (params.questions as any[] || []).map((q:any,i:number)=>({id:String(i),text:q.question,options:(q.options || []).map((o:any)=>({value:o.label,label:o.label,description:o.description})),multiple:q.multiSelect,freeText:true}));
-          const answers = await input.onQuestion(qs);
-          return answers ? {behavior:'allow',updatedInput:{...params,answers:Object.fromEntries(qs.map(q=>[q.text,answers[q.id].join(', ')]))}} : {behavior:'deny',message:'User skipped the questions'};
-        }
-        if(name === 'ExitPlanMode' && input.planning) {
-          if(typeof params.plan === 'string') input.onPlan?.({brief:params.plan});
-          return {behavior:'deny',message:'Plan saved. End this turn with the complete plan. The user will start implementation in a fresh session.'};
-        }
-        return await ask(name,params) ? {behavior:'allow',updatedInput:params} : {behavior:'deny',message:'Action denied'};
-      },
+      canUseTool:createClaudePermissionHandler(input, ask),
     }});
     try {
       for await(const message of run) {

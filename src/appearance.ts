@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export type Appearance = 'system' | 'light' | 'dark';
-const storageKey = 'vulp.appearance';
+const storageKey = 'conduit.appearance';
 function readAppearance(): Appearance {
   try {
     const value = localStorage.getItem(storageKey);

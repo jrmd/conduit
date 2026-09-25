@@ -2,7 +2,7 @@
 
 The first accepted message starts an independent CLI title request. Settings → Thread titles chooses its provider/model; the default uses the conversation model. Titles use at most six words and 48 characters. Failures keep the provisional title. Later messages do not regenerate it; the thread menu offers Regenerate title.
 
-Type `@` to search project files, or `/` (also `$`) for skills and enabled plugins. Arrow keys navigate, Enter/Tab select, and Escape dismisses. Selected references are validated again before sending. The displayed message keeps only the readable tokens; the CLI prompt receives the resolved file/skill paths. No files are uploaded to a provider API by Vulp.
+Type `@` to search project files, or `/` (also `$`) for skills and enabled plugins. Arrow keys navigate, Enter/Tab select, and Escape dismisses. Selected references are validated again before sending. The displayed message keeps only the readable tokens; the CLI prompt receives the resolved file/skill paths. No files are uploaded to a provider API by Conduit.
 
 File discovery uses git tracked/untracked files with ignore rules, falling back to ripgrep outside Git. External symlinks are excluded. Discovery is capped at 12,000 files, returns 40 matching suggestions, and caches for 15 seconds.
 

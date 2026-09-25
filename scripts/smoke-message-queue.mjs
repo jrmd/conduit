@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 const root=process.cwd(),temp=await mkdtemp(path.join(tmpdir(),'conduit-queue-'));
 const data=path.join(temp,'data'),bin=path.join(temp,'bin'),log=path.join(temp,'protocol.jsonl');let app;
-const launch=()=>electron.launch({executablePath:path.join(root,'node_modules/.bin/electron'),args:[root,...(process.env.J2CODE_VIRTUAL_DISPLAY?['--ozone-platform=x11','--disable-gpu']:[]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,J2CODE_DATA_DIR:data,VULP_PROTOCOL_LOG:log}});
+const launch=()=>electron.launch({executablePath:path.join(root,'node_modules/.bin/electron'),args:[root,...(process.env.J2CODE_VIRTUAL_DISPLAY?['--ozone-platform=x11','--disable-gpu']:[]),`--user-data-dir=${path.join(temp,'profile')}`],env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,J2CODE_DATA_DIR:data,CONDUIT_PROTOCOL_LOG:log}});
 const state=async()=>JSON.parse(await readFile(path.join(data,'state.json'),'utf8')).threads[0];
 try {
  await mkdir(data);await mkdir(bin);
