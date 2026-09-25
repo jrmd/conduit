@@ -13,6 +13,8 @@ createInterface({input:process.stdin}).on("line",line=>{
    if(codex){send({method:"item/reasoning/summaryTextDelta",params:{itemId:"think",delta:"files",summaryIndex:0}});send({method:"item/completed",params:{item:{type:"reasoning",id:"think",summary:[],content:[]}}});}
    else send({method:"session/update",params:{update:{sessionUpdate:"agent_thought_chunk",content:{type:"text",text:"files"}}}});
    const allowed=codex ? m.result?.decision==="accept" : m.result?.outcome?.optionId==="yes";
+   if(codex) send({method:"thread/tokenUsage/updated",params:{threadId:"fixture-session",turnId:"fixture-turn",tokenUsage:{last:{totalTokens:1500},total:{totalTokens:3000},modelContextWindow:10000}}});
+   else send({method:"session/update",params:{update:{sessionUpdate:"usage_update",used:1500,size:10000}}});
    if(codex){send({method:"item/agentMessage/delta",params:{delta:allowed?"Allowed":"Denied"}});send({method:"turn/completed",params:{turn:{status:"completed"}}});}
    else {send({method:"session/update",params:{update:{sessionUpdate:"agent_message_chunk",content:{type:"text",text:allowed?"Allowed":"Denied"}}}});send({id:promptId,result:{stopReason:"end_turn"}});}
    return;

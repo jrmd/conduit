@@ -14,11 +14,13 @@ import crossSpawn from 'cross-spawn';
 import { watchCodexActivity } from './codex-activity';
 import { prepareAttachments, type ResolvedAttachment } from './attachments';
 import { createActivityParser } from './activity';
-import type { ActivityUpdate, ModelCatalogue, ModelOption, ProviderId, ProviderInfo, ThreadMode } from '../shared/api';
+import { parseClaudeLimits, parseCodexLimits } from './limits';
+import type { ActivityUpdate, LimitsProvider, ProviderLimits, ThreadUsage, ModelCatalogue, ModelOption, ProviderId, ProviderInfo, ThreadMode } from '../shared/api';
 
 export interface ProviderRunEvent {
-  kind: 'text' | 'status' | 'error' | 'tool' | 'activity';
+  kind: 'text' | 'status' | 'error' | 'tool' | 'activity' | 'usage';
   activity?: ActivityUpdate;
+  usage?: ThreadUsage;
   text: string;
   sessionId?: string;
 }
@@ -389,6 +391,37 @@ async function discoverModelsUncached(provider: ProviderId): Promise<ModelCatalo
     return { provider, options, warning: options.length ? 'Models listed by the local CLI; account availability is checked when you run.' : 'The CLI returned no models. Enter a model ID manually.' };
   } catch {
     return { provider, options: [], warning: 'Could not list models from this CLI. Enter a model ID manually.' };
+  }
+}
+
+/** Read plan limits from the signed-in CLI. No model request is made. */
+export async function discoverLimits(provider: LimitsProvider): Promise<ProviderLimits> {
+  const fetchedAt = Date.now();
+  const executable = await findExecutable(provider);
+  if (!executable) return { provider, windows: [], notes: [], warning: `${displayName(provider)} CLI not found.`, fetchedAt };
+  try {
+    if (provider === 'codex') {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      const rpc = new ProviderRpc(executable, ['app-server'], homedir(), providerEnvironment(), controller.signal);
+      try {
+        await rpc.request('initialize', { clientInfo: { name: 'conduit', version: '0.5.0' }, capabilities: { experimentalApi: true } });
+        rpc.notify('initialized');
+        return { provider, ...parseCodexLimits(await rpc.request('account/rateLimits/read', {})), fetchedAt };
+      } finally { clearTimeout(timer); rpc.close(); }
+    }
+    const request = JSON.stringify({ type: 'control_request', request_id: 'conduit-limits', request: { subtype: 'get_usage', skip_behaviors: true } }) + '\n';
+    const output = await captureModelList(executable, ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'], 15000, request);
+    for (const line of output.split('\n')) try {
+      const frame = JSON.parse(line);
+      if (frame.type !== 'control_response' || frame.response?.request_id !== 'conduit-limits') continue;
+      if (frame.response.subtype !== 'success') break;
+      return { provider, ...parseClaudeLimits(frame.response.response), fetchedAt };
+    } catch { /* Not a response frame. */ }
+    throw new Error('No usage response');
+  } catch {
+    const login = provider === 'codex' ? 'codex login' : 'claude /login';
+    return { provider, windows: [], notes: [], warning: `Could not read limits from ${displayName(provider)}. Update the CLI and sign in with ${login}, then refresh.`, fetchedAt };
   }
 }
 

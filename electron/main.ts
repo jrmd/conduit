@@ -18,7 +18,7 @@ import { createUpdates } from './updates';
 import { Store } from '../core/store.js';
 import { validateThreadConfig } from '../core/thread-config';
 import { commitContext, pullRequestContext, createPullRequest, gitCommit, gitDiff, gitPush, gitStatus, currentBranch, threadGitContext, findThreadPR } from '../core/git.js';
-import { clearModelCatalogues, discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
+import { clearModelCatalogues, discoverLimits, discoverModels, discoverProviders, normalizeModelId, validateEffort, validateModelSettings, runProvider } from '../core/providers.js';
 import type { AppEvent, CommitInput, CommitMessageInput, PRDraftInput, PRInput, ProviderId, ProviderInfo, Snapshot, SendOptions, ThreadConfig, WorkspaceChoice } from '../shared/api.js';
 
 // Keep the existing workspace and Electron profile across the Conduit rename.
@@ -122,6 +122,11 @@ async function runThread(threadId: string, prompt: string, files: ResolvedAttach
           return;
         }
         if (event.kind === 'activity') return;
+        if (event.kind === 'usage') {
+          if (event.usage) emit({ type: 'usage', threadId, usage: store.recordUsage(threadId, event.usage) });
+          if (!flushTimer) flushTimer = setTimeout(() => { flushTimer = undefined; void store.flush().catch(() => {}); }, 500);
+          return;
+        }
         if (event.sessionId) persistSession(event.sessionId);
         if (event.kind === 'text') text += event.text;
         emit({ type: 'provider', threadId, kind: event.kind, text: event.text });
@@ -284,6 +289,10 @@ function registerIpc() {
     if (!providerIds.has(provider as ProviderId)) throw new Error('Unknown provider');
     if (store.snapshot().disabledProviders.includes(provider as ProviderId)) throw new Error('Provider is disabled');
     return discoverModels(provider as ProviderId);
+  });
+  handle('limits', async (provider: unknown) => {
+    if (provider !== 'claude' && provider !== 'codex') throw new Error('Limits are available for Claude and Codex only');
+    return discoverLimits(provider);
   });
   handle('pick-project', async () => {
     const choice = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] });

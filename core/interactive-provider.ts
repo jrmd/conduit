@@ -7,6 +7,7 @@ import { createActivityParser } from "./activity";
 import { createClaudeTextStream } from "./response-stream";
 import { z } from 'zod';
 import { callProviderTool, type ProviderTool } from './delegation';
+import { acpUsage, claudeUsage, codexUsage } from './usage';
 
 export async function createClaudeToolServer(tools: readonly ProviderTool[]) {
   const { createSdkMcpServer, tool } = await import('@anthropic-ai/claude-agent-sdk');
@@ -77,6 +78,7 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
         }
         for(const item of activity(JSON.stringify(message))) input.onEvent({kind:"activity",text:item.title,activity:item});
         const delta=streamText(message); if(delta) input.onEvent({kind:"text",text:delta,sessionId});
+        const usage=claudeUsage(message); if(usage) input.onEvent({kind:"usage",text:"",usage});
         if(message.type === "result" && message.is_error) throw new Error("errors" in message ? message.errors.join("\n") : "result" in message ? message.result : "Claude run failed");
       }
       return {sessionId};
@@ -115,10 +117,12 @@ export async function runInteractiveProvider(input: RunProviderArgs, executable:
         const delta=method==="item/reasoning/summaryPartAdded" ? (p.summaryIndex > 0 ? "\n\n" : "") : p.delta || "";
         if(delta) input.onEvent({kind:"activity",text:"Thinking",activity:{id:p.itemId,kind:"reasoning",title:"Thinking",detail:delta,status:"running",append:true}});
       }
+      if(method==="thread/tokenUsage/updated" && p.threadId === sessionId) { const usage=codexUsage(p); if(usage) input.onEvent({kind:"usage",text:"",usage}); }
       if(method==="turn/completed") { if(p.turn?.status==="failed" || p.turn?.status==="interrupted") rejectTurn(new Error(p.turn.error?.message || `Codex turn ${p.turn.status}`)); else resolveTurn(); }
     } else if(method==="session/update") {
       const u=p.update;
       if(u?.sessionUpdate === 'plan') input.onPlan?.({steps:planSteps(u.entries)});
+      const usage=acpUsage(u); if(usage) input.onEvent({kind:"usage",text:"",usage});
       if(u?.sessionUpdate==="agent_message_chunk" && u.content?.type==="text") { settleThought(); input.onEvent({kind:"text",text:u.content.text,sessionId}); }
       if(u?.sessionUpdate==="agent_thought_chunk" && u.content?.type==="text") {
         thought ??= `thought-${thoughts++}`;

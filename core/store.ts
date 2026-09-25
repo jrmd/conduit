@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { ActivityUpdate, Message, Project, ProviderId, Snapshot, Thread, ThreadConfig, ThreadMode, ThreadWorkspace } from '../shared/api.js';
+import type { ActivityUpdate, Message, ThreadUsage, Project, ProviderId, Snapshot, Thread, ThreadConfig, ThreadMode, ThreadWorkspace } from '../shared/api.js';
 
 interface State { projects: Project[]; threads: Thread[]; disabledProviders: ProviderId[]; }
 
@@ -73,6 +73,11 @@ export class Store {
     if (existing) Object.assign(existing, record); else records.push(record);
     if (records.length > 500) records.splice(0, records.length - 500);
     return structuredClone(record);
+  }
+  recordUsage(id: string, usage: ThreadUsage) {
+    const thread = this.getThread(id);
+    thread.usage = { ...thread.usage, ...usage };
+    return structuredClone(thread.usage);
   }
   async finishActivity(id: string, runId: string, cancelled: boolean) {
     for (const item of this.getThread(id).activity || []) if (item.runId === runId && item.status === 'running') { item.status = cancelled ? 'interrupted' : 'unknown'; item.updatedAt = Date.now(); }

@@ -11,6 +11,8 @@ A desktop workspace for Codex, Claude Code, Cursor, OpenCode, and GitHub Copilot
 - Inline tools, public reasoning summaries, and delegated-agent activity when exposed by the CLI.
 - [Claude ↔ Codex delegation](docs/cross-provider-delegation.md) for read-only review and research, with live child activity and results returned to the parent.
 - Queue follow-ups while an agent runs (Enter), or use **Steer now** (Alt+Enter) to interrupt and resume the same session with a correction. Pending messages persist across restarts; Stop pauses the queue, and queued messages can be removed or resumed. Steering starts a new turn in the existing session.
+- A composer meter shows how full the context window is and the session cost, using the figures each CLI reports. Claude reports both. Codex and ACP providers report context, and cost only when the CLI includes it. Cost is the CLI's estimate, not a bill.
+- **Settings → Usage** shows plan limits for Claude Code and Codex: usage windows with reset times, plan, extra-usage, credit and free-reset status. Click the meter in a Claude or Codex chat to open it. Conduit reads these through the CLI's own protocol (Claude `get_usage`, Codex `account/rateLimits/read`), so checking limits doesn't use any. Claude marks this API as experimental. Other CLIs don't report plan limits.
 - Copy response, native text context menus, and project/thread context actions.
 - Selected-file commits, branch push, and pull requests through Git and `gh`.
 

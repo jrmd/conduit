@@ -5,8 +5,9 @@ import { modelFamilies } from '../shared/model-options';
 import type { Appearance } from './appearance';
 import { providerIcons, providerIds, providerNames } from './providers';
 import { SummarySettings, type SummaryChoice } from './SummarySettings';
+import { UsageLimits } from './UsageLimits';
 
-const tabs = [['appearance', 'Appearance'], ['providers', 'Agents'], ['summaries', 'Thread titles'], ['updates', 'Updates']] as const;
+const tabs = [['appearance', 'Appearance'], ['providers', 'Agents'], ['usage', 'Usage'], ['summaries', 'Thread titles'], ['updates', 'Updates']] as const;
 const themes = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as const;
 
 interface SettingsScreenProps {
@@ -75,6 +76,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
           if (updateStatus.state === 'ready') await window.j2code.installUpdate();
           else props.onUpdateStatus(await window.j2code.checkForUpdates());
         })}>{updateStatus.state === 'ready' ? 'Restart to update' : updateStatus.state === 'checking' ? 'Checking…' : 'Check for updates'}</button>
+      </div></section>
+
+      <section {...panel('usage')}><div id="settings-usage">
+        <UsageLimits active={tab === 'usage'} snapshot={snapshot}/>
       </div></section>
 
       <section {...panel('summaries')}><div id="settings-summaries">

@@ -1,0 +1,17 @@
+.usage-meter{display:flex;border:0;background:transparent;font-family:inherit;align-items:center;gap:5px;height:25px;margin-left:auto;padding:0 6px;border-radius:5px;color:#7d8795;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default}
+button.usage-meter{cursor:pointer}
+.usage-meter:hover,.usage-meter:focus-visible{color:#aeb8c8;background:#22262d}
+.usage-meter svg{width:14px;height:14px;flex:none;transform:rotate(-90deg)}
+.usage-meter circle{fill:none;stroke-width:2.5}
+.usage-meter circle:first-child{stroke:#343e4e}
+.usage-meter circle:last-child{stroke:#8fb4e0;stroke-linecap:round;transition:stroke-dasharray .3s ease}
+.usage-meter[data-level=high] circle:last-child{stroke:#d9a55b}
+.usage-meter[data-level=critical] circle:last-child{stroke:#e58e94}
+.usage-meter-cost{padding-left:5px;border-left:1px solid #343e4e}
+/* The meter takes the flexible space that would otherwise push the send button right. */
+.composer-bottom .usage-meter~.send-button{margin-left:0}
+[data-theme=light] .usage-meter{color:#50657c}
+[data-theme=light] :is(.usage-meter:hover,.usage-meter:focus-visible){color:#253b54;background:#eaf0f6}
+[data-theme=light] .usage-meter circle:first-child,[data-theme=light] .usage-meter-cost{border-color:#d3dce6;stroke:#d3dce6}
+[data-theme=light] .usage-meter:not([data-level]) circle:last-child{stroke:#477bb9}
+@media(max-width:900px){.usage-meter-cost{display:none}}

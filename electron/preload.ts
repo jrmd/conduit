@@ -22,6 +22,7 @@ const api: DesktopApi = {
   setProviderEnabled: (provider, enabled) => ipcRenderer.invoke('provider-enabled', provider, enabled),
   discover: () => ipcRenderer.invoke('discover'),
   getModels: provider => ipcRenderer.invoke('models', provider),
+  getLimits: provider => ipcRenderer.invoke('limits', provider),
   pickProject: () => ipcRenderer.invoke('pick-project'),
   removeProject: projectId => ipcRenderer.invoke('remove-project', projectId),
   createThread: (projectId, provider, mode, model, effort, workspace) => ipcRenderer.invoke('create-thread', projectId, provider, mode, model, effort, workspace),

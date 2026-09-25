@@ -1,5 +1,9 @@
 # Validation record
 
+## 0.8.0 — context meter and plan limits
+
+All 80 core tests, typecheck, production build and Linux AppImage packaging pass. Unit tests cover the Claude, Codex and ACP usage parsers and the Claude/Codex limit parsers. The approval protocol fixture now emits Codex `thread/tokenUsage/updated` and ACP `usage_update`, and every provider/mode run asserts the resulting usage event. Live runs through the production interactive runner: Claude Haiku reported 15.6K/200K context and $0.0325, then $0.0345 after resuming the same session; Codex reported 22K/258K context and no cost. Live limit reads through the production code (no prompt sent) returned Claude Pro 5-hour 48% and weekly 20%, and Codex Pro Lite weekly 81% with one free reset. `scripts/smoke-usage-meter.mjs` (run with `ELECTRON_RUN_AS_NODE` unset) uses seeded threads and fixture `claude`/`codex` CLIs to check meter percentages, warning levels, the tooltip, opening Usage from the meter, and limit bars. Screenshots inspected at 1440×900 (dark), 850×700 (light) and 430×800. ACP usage is fixture-tested only; Cursor, OpenCode and Copilot were not run live.
+
 ## 0.7.0 — planning, questions and fresh-context handoff
 
 All 66 core tests, typecheck and Linux AppImage packaging pass. The packaged planning Electron smoke covers native-protocol question answers, pending-question renderer reload, checklist/brief persistence, a new thread without old history/session identity, and execution through a second fixture provider in the same workspace. Desktop and mobile screenshots were inspected using software-rendered X11. The packaged approval regression smoke also passes. Fixtures do not establish authenticated provider behavior.

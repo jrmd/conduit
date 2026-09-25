@@ -4,6 +4,7 @@ import './planning.css';
 import type { QuestionRequest } from '../shared/api';
 import { ThreadPreview } from './ThreadPreview';
 import { ModelControls } from './ModelControls';
+import { UsageMeter } from './UsageMeter';
 import './model-controls.css';
 import { modelFamilies, familyForModel } from '../shared/model-options';
 import type { ModelSettings } from '../shared/api';
@@ -261,6 +262,9 @@ export default function App() {
       }
       if (event.type === 'activity') {
         setSnapshot(previous => ({ ...previous, threads: previous.threads.map(thread => thread.id !== event.threadId ? thread : { ...thread, activity: [...(thread.activity || []).filter(item => item.id !== event.activity.id), event.activity].sort((a,b) => a.createdAt - b.createdAt).slice(-500) }) }));
+      }
+      if (event.type === 'usage') {
+        setSnapshot(previous => ({ ...previous, threads: previous.threads.map(thread => thread.id === event.threadId ? { ...thread, usage: event.usage } : thread) }));
       }
       if (event.type === 'thread') {
         setSnapshot(previous => ({ ...previous, threads: previous.threads.some(thread => thread.id === event.thread.id)
@@ -722,6 +726,7 @@ export default function App() {
                 </div>
                 
               
+                <UsageMeter usage={activeThread?.usage} onOpen={activeThread?.provider === 'claude' || activeThread?.provider === 'codex' ? () => { setSettingsTab('usage'); setSettingsOpen(true); } : undefined} />
                 {activeThread?.running && <><button className="send-button stop-button" onClick={() => window.j2code.cancel(activeThread.id).catch(error => notify(String(error), 'error'))} title="Stop generation and pause queue" aria-label="Stop generation"><Square size={13} fill="currentColor" /></button></>}
                 <button className="send-button" onClick={() => send()} disabled={!canSend} title={activeThread?.running ? 'Queue message (Enter)' : 'Send message'} aria-label={activeThread?.running ? 'Queue message' : 'Send message'}>{sending ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={17} />}</button>
               </div>

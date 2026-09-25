@@ -15,8 +15,14 @@ export interface Attachment { id: string; name: string; mime: string; size: numb
 export interface UpdateStatus { state: 'idle' | 'checking' | 'downloading' | 'ready' | 'current' | 'error' | 'unsupported'; version?: string; percent?: number; message?: string; }
 export interface Message { attachments?: Attachment[]; id: string; role: Role; text: string; createdAt: number; }
 export interface ModelSettings { contextWindow?: number; fastMode?: boolean; }
+/** Latest usage reported by the CLI. Cost is the session total and is absent when the CLI does not report one. */
+export interface ThreadUsage { contextTokens?: number; contextWindow?: number; cost?: { amount: number; currency: string }; }
+export type LimitsProvider = 'claude' | 'codex';
+export interface LimitWindow { label: string; usedPercent: number; resetsAt?: number; }
+/** Plan limits reported by the signed-in CLI account. */
+export interface ProviderLimits { provider: LimitsProvider; plan?: string; windows: LimitWindow[]; notes: string[]; warning?: string; fetchedAt: number; }
 export interface QueuedMessage { id: string; text: string; attachments: string[]; references: string[]; title?: { provider: ProviderId; model?: string }; }
-export interface Thread extends ModelSettings { queuedMessages?: QueuedMessage[]; queuePaused?: boolean; planning?: boolean; plan?: Plan; handoff?: string; sourceThreadId?: string; workspace?: ThreadWorkspace; branch?: string; branches?: string[]; repository?: string; summary?: string; settled?: boolean; pinned?: boolean; id: string; projectId: string; title: string; provider: ProviderId; mode: ThreadMode; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
+export interface Thread extends ModelSettings { usage?: ThreadUsage; queuedMessages?: QueuedMessage[]; queuePaused?: boolean; planning?: boolean; plan?: Plan; handoff?: string; sourceThreadId?: string; workspace?: ThreadWorkspace; branch?: string; branches?: string[]; repository?: string; summary?: string; settled?: boolean; pinned?: boolean; id: string; projectId: string; title: string; provider: ProviderId; mode: ThreadMode; model?: string; effort?: string; activity?: Activity[]; sessionId?: string; messages: Message[]; createdAt: number; updatedAt: number; running?: boolean; }
 export interface Project { id: string; name: string; path: string; createdAt: number; }
 export interface ProviderInfo { id: ProviderId; name: string; available: boolean; path?: string; version?: string; error?: string; }
 export interface ModelOption { id: string; label: string; source: 'discovered' | 'alias'; efforts?: string[]; contextWindows?: number[]; supportsFastMode?: boolean; }
@@ -27,7 +33,7 @@ export type ActivityUpdate = Omit<Activity, 'runId' | 'createdAt' | 'updatedAt'>
 export interface Snapshot { questions?: QuestionRequest[]; approvals?: ApprovalRequest[]; projects: Project[]; threads: Thread[]; providers: ProviderInfo[]; disabledProviders: ProviderId[]; }
 export interface ChangedFile { path: string; previousPath?: string; status: string; staged: boolean; unstaged: boolean; untracked: boolean; }
 export interface GitStatus { branch: string; files: ChangedFile[]; ahead: number; behind: number; remote?: string; pushTarget?: string; isRepository: boolean; }
-export type AppEvent = { type: 'run-finished'; threadId: string } | { type: 'questions'; questions: QuestionRequest[] } | { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
+export type AppEvent = { type: 'run-finished'; threadId: string } | { type: 'usage'; threadId: string; usage: ThreadUsage } | { type: 'questions'; questions: QuestionRequest[] } | { type: 'approvals'; approvals: ApprovalRequest[] } | { type: 'activity'; threadId: string; activity: Activity } | { type: 'snapshot'; snapshot: Snapshot } | { type: 'thread'; thread: Thread } | { type: 'provider'; threadId: string; kind: 'text' | 'status' | 'error' | 'tool'; text: string };
 export interface CommitMessageInput { threadId?: string; projectId: string; files: string[]; provider: ProviderId; model?: string; }
 export interface CommitInput { threadId?: string; projectId: string; files: string[]; message: string; newBranch?: string; }
 export interface PRDraftInput { threadId?: string; projectId: string; provider: ProviderId; model?: string; }
@@ -57,6 +63,7 @@ export interface DesktopApi {
   setProviderEnabled(provider: ProviderId, enabled: boolean): Promise<void>;
   discover(): Promise<ProviderInfo[]>;
   getModels(provider: ProviderId): Promise<ModelCatalogue>;
+  getLimits(provider: LimitsProvider): Promise<ProviderLimits>;
   pickProject(): Promise<Project | null>;
   removeProject(projectId: string): Promise<void>;
   createThread(projectId: string, provider: ProviderId, mode: ThreadMode, model?: string, effort?: string, workspace?: WorkspaceChoice): Promise<Thread>;
