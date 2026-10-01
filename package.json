@@ -1,6 +1,6 @@
 {
   "name": "conduit",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Local desktop workspace for CLI coding agents",
   "author": "Conduit",
@@ -86,7 +86,6 @@
         "provider": "github",
         "owner": "jrmd",
         "repo": "conduit",
-        "private": true,
         "releaseType": "release"
       }
     ],

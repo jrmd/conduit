@@ -36,13 +36,13 @@ Codex uses `--image`, Claude uses image blocks over CLI stream-json stdin, and O
 
 Download the appropriate build from [GitHub Releases](https://github.com/jrmd/conduit/releases). On Linux, make the AppImage executable and run it. The unpacked development binary cannot self-update.
 
-This repository is private. Sign in with `gh auth login` on the work machine using an account with access to `jrmd/conduit`. Conduit retrieves the credential from `gh` in its main process when checking for updates. No credential is bundled in a release, exposed to the renderer, or persisted by Conduit. GitHub access and local CLI access are separate.
+Releases are public. Update checks and downloads work without GitHub CLI or a GitHub login.
 
 Installed builds check 15 seconds after startup and every four hours, download available stable releases, then show **Restart to update**. Updates never restart the app automatically or while an agent is running. A manual check is available in Agent settings. Failed checks can be retried; an unpacked build explains that the AppImage is required.
 
 ## Development
 
-Requires Node.js 22+, pnpm 11.22.0, and at least one supported CLI on PATH. `gh` is used for pull requests and private release updates.
+Requires Node.js 22+, pnpm 11.22.0, and at least one supported CLI on PATH. `gh` is used for pull requests.
 
 ```sh
 pnpm install

@@ -1,10 +1,10 @@
-// Opt-in network check against this project's real private GitHub release feed.
+// Opt-in network check against this project's real public GitHub release feed.
 import { _electron as electron } from 'playwright';
 import { expect } from 'playwright/test';
 import { mkdtemp, copyFile, rm, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-if(process.env.CONDUIT_LIVE_UPDATE_CHECK !== '1') throw new Error('Set CONDUIT_LIVE_UPDATE_CHECK=1 to check the private GitHub release feed');
+if(process.env.CONDUIT_LIVE_UPDATE_CHECK !== '1') throw new Error('Set CONDUIT_LIVE_UPDATE_CHECK=1 to check the public GitHub release feed');
 const temp=await mkdtemp(path.join(tmpdir(),'conduit-update-check-'));
 let desktop;
 try {
@@ -16,7 +16,7 @@ try {
  const page=await desktop.firstWindow();await expect(page.getByRole('button',{name:'Agent settings',exact:true})).toBeVisible();
  expect(await desktop.evaluate(({app})=>app.getPath('userData'))).toBe(path.join(temp,'profile'));
  const current=await page.evaluate(()=>window.j2code.checkForUpdates());expect(current.state).toBe('current');
- console.log(`PASS: real private GitHub feed authenticated through gh; installed version ${current.version} is current.`);
+ console.log(`PASS: real public GitHub feed; installed version ${current.version} is current.`);
  if(process.env.CONDUIT_TEST_UPDATE_DOWNLOAD==='1') {
   // Simulate an older installed version, leaving production version and files untouched.
   await desktop.evaluate(async({app})=>{const {createRequire}=process.getBuiltinModule('node:module');const require=createRequire(app.getAppPath()+'/package.json');const {autoUpdater}=require('electron-updater');autoUpdater.currentVersion=new autoUpdater.currentVersion.constructor('0.0.1');autoUpdater.disableDifferentialDownload=true;});
