@@ -65,6 +65,9 @@
       "syncDesktopName": true
     },
     "mac": {
+      "forceCodeSigning": true,
+      "hardenedRuntime": true,
+      "notarize": true,
       "target": [
         "dmg",
         "zip"
